@@ -9,7 +9,11 @@
 
 package jvn;
 
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.io.Serializable;
 
 
@@ -22,13 +26,29 @@ public class JvnCoordImpl
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-
+	private int jvnObjectId;
+	private HashMap <Integer,String> jvnObjectIdList;
+	private ArrayList<JvnRemoteServer> jvnServerList;
+	private HashMap <String,JvnObject> remoteObjectList;
+	private ArrayList<JvnObject> jvnObjectList;
+	private HashMap<jvnObjectId,<JvnRemoteServer,>
+	private Registry registry;
 /**
   * Default constructor
   * @throws JvnException
   **/
 	private JvnCoordImpl() throws Exception {
 		// to be completed
+		this.jvnObjectId=0;
+		this.jvnObjectList = new ArrayList<JvnObject>();
+		this.jvnServerList = new ArrayList<JvnRemoteServer>();//CECI EST FAUX
+		//AJOUTER HASHMAP DE MAP POUR LES ETATS DE LOCKS ET MODIFIER LES FONCTIONS QUI EN DEPAND
+		
+		this.remoteObjectList = new HashMap<String,JvnObject>();
+		this.registry= LocateRegistry.getRegistry();
+		JvnRemoteCoord remote_stub= (JvnRemoteCoord) UnicastRemoteObject.exportObject(this, 0);
+		registry.bind("coord_service", remote_stub);
+		System.out.println("Coord service UP");
 	}
 
   /**
@@ -38,8 +58,8 @@ public class JvnCoordImpl
   **/
   public int jvnGetObjectId()
   throws java.rmi.RemoteException,jvn.JvnException {
-    // to be completed 
-    return 0;
+    
+    return this.jvnObjectId+=1;
   }
   
   /**
@@ -52,7 +72,12 @@ public class JvnCoordImpl
   **/
   public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js)
   throws java.rmi.RemoteException,jvn.JvnException{
-    // to be completed 
+    if(!this.jvnServerList.contains(js))
+    		return;
+    Integer joi = this.jvnGetObjectId();
+    this.jvnObjectIdList.put(joi, jon);
+    this.remoteObjectList.put(jon, jo);
+	  // to be completed 
   }
   
   /**
@@ -63,8 +88,10 @@ public class JvnCoordImpl
   **/
   public JvnObject jvnLookupObject(String jon, JvnRemoteServer js)
   throws java.rmi.RemoteException,jvn.JvnException{
-    // to be completed 
-    return null;
+    if(!this.jvnServerList.contains(js))// to be completed 
+    	return null;
+    return null; //TODO
+   
   }
   
   /**
@@ -76,8 +103,10 @@ public class JvnCoordImpl
   **/
    public Serializable jvnLockRead(int joi, JvnRemoteServer js)
    throws java.rmi.RemoteException, JvnException{
-    // to be completed
-    return null;
+	   if(!this.jvnServerList.contains(js))// to be completed 
+	    	return null;
+	   // to be completed
+    return null;//TODO
    }
 
   /**
@@ -89,8 +118,11 @@ public class JvnCoordImpl
   **/
    public Serializable jvnLockWrite(int joi, JvnRemoteServer js)
    throws java.rmi.RemoteException, JvnException{
-    // to be completed
-    return null;
+	   if(!this.jvnServerList.contains(js))// to be completed 
+	    	return null;
+	   // to be completed
+   return null;//TODO
+    
    }
 
 	/**
@@ -100,8 +132,24 @@ public class JvnCoordImpl
 	**/
     public void jvnTerminate(JvnRemoteServer js)
 	 throws java.rmi.RemoteException, JvnException {
-	 // to be completed
+	 this.jvnServerList.remove(js);
     }
+
+	public HashMap <String,JvnObject> getRemoteObjectList() {
+		return remoteObjectList;
+	}
+
+	public void setRemoteObjectList(HashMap <String,JvnObject> remoteObjectList) {
+		this.remoteObjectList = remoteObjectList;
+	}
+
+	public Registry getRegistry() {
+		return registry;
+	}
+
+	public void setRegistry(Registry registry) {
+		this.registry = registry;
+	}
 }
 
  

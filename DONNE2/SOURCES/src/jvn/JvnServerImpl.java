@@ -9,6 +9,8 @@
 
 package jvn;
 
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.io.*;
 
@@ -24,6 +26,10 @@ public class JvnServerImpl
 	private static final long serialVersionUID = 1L;
 	// A JVN server is managed as a singleton 
 	private static JvnServerImpl js = null;
+	private JvnRemoteCoord JvnCoordinator;
+	private Registry registry;
+	
+	
 
   /**
   * Default constructor
@@ -31,6 +37,11 @@ public class JvnServerImpl
   **/
 	private JvnServerImpl() throws Exception {
 		super();
+		JvnServerImpl.js=this;
+		this.registry= LocateRegistry.getRegistry();
+		JvnRemoteServer remote_stub= (JvnRemoteServer) UnicastRemoteObject.exportObject(this, 0);
+		registry.bind("remote_service", remote_stub);
+		JvnCoordinator=(JvnRemoteCoord) registry.lookup("coord_service");
 		// to be completed
 	}
 	
@@ -56,7 +67,9 @@ public class JvnServerImpl
 	**/
 	public  void jvnTerminate()
 	throws jvn.JvnException {
-    // to be completed 
+    // to be completed
+		JvnServerImpl.js=null;
+		
 	} 
 	
 	/**
