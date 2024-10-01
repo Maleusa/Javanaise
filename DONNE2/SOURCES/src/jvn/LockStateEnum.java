@@ -1,6 +1,7 @@
 package jvn;
 
 public enum LockStateEnum {
+NOREF,
 NOLOCK,
 READLOCK,
 WRITELOCK,
