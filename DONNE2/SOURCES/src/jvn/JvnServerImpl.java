@@ -9,8 +9,11 @@
 
 package jvn;
 
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.io.*;
 
@@ -18,7 +21,9 @@ import java.io.*;
 
 public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer, JvnRemoteServer { 
 	
+	@Serial
 	private static final long serialVersionUID = 1L;
+
 	private static JvnServerImpl js = null; // A JVN server is managed as a singleton 
 	private JvnRemoteCoord JvnCoordinator;
 	private Registry registry;
@@ -30,7 +35,9 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	private JvnServerImpl() throws Exception {
 		super();
 		System.out.println("Init JvnServerImpl !");
-		JvnServerImpl.js = this;
+		if (JvnServerImpl.js == null) {
+			JvnServerImpl.js = this;
+		}
 		this.registry = LocateRegistry.getRegistry();
 		JvnRemoteServer remote_stub = (JvnRemoteServer) UnicastRemoteObject.exportObject(this, 0);
 		System.out.println("Done init JvnServerImpl");
@@ -48,7 +55,11 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		if (js == null) {
 			try {
 				js = new JvnServerImpl();
+			} catch (ExportException e) {
+				// Could be init elsewhere.
+				return js;
 			} catch (Exception e) {
+				System.out.println("Cannot init JvnServerImpl: " + e.getMessage());
 				return null;
 			}
 		}
@@ -87,14 +98,19 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	}
 
 	/**
-	* Provide the reference of a JVN object beeing given its symbolic name
+	* Provide the reference of a JVN object being given its symbolic name
 	* @param jon : the JVN object name
 	* @return the JVN object 
 	* @throws JvnException
 	**/
 	public JvnObject jvnLookupObject(String jon) throws jvn.JvnException {
-		// to be completed 
-		return null;
+		// to be completed
+        try {
+            return (JvnObject) registry.lookup(jon);
+        } catch (RemoteException | NotBoundException e) {
+            //throw new RuntimeException(e);
+        }
+        return null;
 	}	
 
 	/**
