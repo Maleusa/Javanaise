@@ -17,12 +17,16 @@ import java.rmi.RemoteException;
 
 public class JvnObjectImpl implements JvnObject {
 	private static final long serialVersionUID = 1L;
-	private LockStateEnum lockState = LockStateEnum.NOLOCK;
+	private LockStateEnum lockState;
+	private transient JvnServerImpl localServer;
 	private int id;
 	private Serializable object;
 	
-	public JvnObjectImpl(Serializable object) {
-		this.object = object;
+	public JvnObjectImpl(Serializable object, JvnServerImpl jvnServerImpl,int id) {
+		this.setObject(object);
+		this.setLocalServer(jvnServerImpl);
+		this.lockState=LockStateEnum.NOLOCK;
+		this.id=id;
 	}
 
 	/**
@@ -31,7 +35,20 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public void jvnLockRead() throws jvn.JvnException {
-		this.lockState = LockStateEnum.READLOCK;
+		switch(this.lockState) {
+		case NOLOCK:
+			this.object=this.localServer.jvnLockRead(id);
+			this.lockState=LockStateEnum.READLOCK;
+			break;
+		case WRITELOCK:
+			this.lockState=LockStateEnum.READWRITECACHED;
+			break;
+		case READLOCK:
+			this.lockState=LockStateEnum.READLOCK;
+			break;
+		default:
+			break;
+		}
 	}
 
 	/**
@@ -41,17 +58,10 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public void jvnLockWrite() throws jvn.JvnException {
-		try {
-			// To take a lock we have to wait a no lock state.
-			while (this.lockState != LockStateEnum.NOLOCK) {
-				wait();
-			}
-			this.lockState = LockStateEnum.WRITELOCK;
-			
-			// TODO: This will notify a single thread. notifyAll() is maybe more appropriated?
-			notify();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		switch(this.lockState) {
+		default:
+			this.object=this.localServer.jvnLockWrite(this.id);
+			this.lockState=LockStateEnum.WRITELOCK;
 		}
 	}
 
@@ -61,8 +71,17 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public void jvnUnLock() throws jvn.JvnException {
-		this.lockState = LockStateEnum.NOLOCK;			
-		notify();
+		switch(this.lockState) {
+		case READLOCK:
+			this.lockState=LockStateEnum.READLOCKCACHED;
+			break;
+		case WRITELOCK:
+			this.lockState=LockStateEnum.WRITELOCKCACHED;
+			break;
+		default:
+			break;
+		}
+		this.notifyAll();
 	}
 
 	/**
@@ -100,8 +119,14 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public Serializable jvnInvalidateWriter() throws jvn.JvnException {
+		try {
+			this.wait();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.lockState = LockStateEnum.NOLOCK;
-		return this;
+		return this.object;
 	}
 
 	/**
@@ -111,7 +136,29 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public Serializable jvnInvalidateWriterForReader() throws jvn.JvnException {
+		try {
+			this.wait();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.lockState = LockStateEnum.READLOCKCACHED;
-		return this;
+		return this.object;
+	}
+
+	public JvnServerImpl getLocalServer() {
+		return localServer;
+	}
+
+	public void setLocalServer(JvnServerImpl localServer) {
+		this.localServer = localServer;
+	}
+
+	public Serializable getObject() {
+		return object;
+	}
+
+	public void setObject(Serializable object) {
+		this.object = object;
 	}
 }

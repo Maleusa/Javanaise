@@ -74,7 +74,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			throws java.rmi.RemoteException, jvn.JvnException {
 		if (!this.jvnServerList.contains(js))
 			return;
-		Integer joi = this.jvnGetObjectId();
+		int joi=jo.jvnGetObjectId();
 		this.jvnObjectIdList.put( jon,joi);
 		this.remoteObjectList.put(jon, jo);
 		HashMap<JvnRemoteServer,LockStateEnum> tempHash = new HashMap<JvnRemoteServer, LockStateEnum>();
@@ -181,7 +181,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
 	public void jvnTerminate(JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		this.jvnServerList.remove(js);
+		this.jvnServerList.remove(js);//TODO AJOUTER DU CLEANUP ICI
 	}
 
 	public HashMap<String, JvnObject> getRemoteObjectList() {

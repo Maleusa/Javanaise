@@ -10,6 +10,7 @@
 
 package jvn;
 import java.io.Serializable;
+import java.rmi.RemoteException;
 
 /**
  * Local interface of a JVN server  (used by the applications).
@@ -24,9 +25,10 @@ public interface JvnLocalServer {
 	* @param jos : the JVN object state
   * @return the JVN object 
 	* @throws JvnException
+	 * @throws RemoteException 
 	**/
 	public  JvnObject jvnCreateObject(Serializable jos)
-	throws jvn.JvnException ; 
+	throws jvn.JvnException, RemoteException ; 
 	
 	/**
 	* Associate a symbolic name with a JVN object
