@@ -52,6 +52,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		System.out.println("Done init JvnServerImpl");
 		registry.bind("remote_service", remote_stub);
 		JvnCoordinator = (JvnRemoteCoord) registry.lookup("coord_service");
+		JvnCoordinator.registerjvnServer(this);
 		// to be completed
 	}
 
