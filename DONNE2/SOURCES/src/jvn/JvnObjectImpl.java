@@ -108,8 +108,13 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public void jvnInvalidateReader() throws jvn.JvnException {
-		this.lockState = LockStateEnum.NOLOCK;			
-		notify();
+		try {
+			this.wait();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.lockState=LockStateEnum.NOLOCK;
 	}
 
 	/**
