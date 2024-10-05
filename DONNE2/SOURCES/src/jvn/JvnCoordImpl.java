@@ -17,19 +17,30 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.io.Serializable;
 
-public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord {
 
-	/**
-	 * 
-	 */
+public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord {
 	private static final long serialVersionUID = 1L;
+	private static Registry registry;
 	private int jvnObjectId;
 	private HashMap<String,Integer> jvnObjectIdList;
 	private ArrayList<JvnRemoteServer> jvnServerList;
 	private HashMap<String, JvnObject> remoteObjectList;
 	private HashMap<Integer,JvnObject> jvnObjectList;
 	private HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>> objectServerState;
-	private Registry registry;
+
+
+	public static void main(String[] args) throws Exception {
+		JvnCoordImpl jc = new JvnCoordImpl();
+
+		// Lister les noms des objets enregistrés
+		String[] boundNames = registry.list();
+		System.out.println("Objets enregistrés dans le registre RMI :");
+		for (String name : boundNames) {
+			System.out.println(name);
+		}
+
+		System.out.println("Coord service UP");
+	}
 
 	/**
 	 * Default constructor
@@ -37,17 +48,17 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws JvnException
 	 **/
 	private JvnCoordImpl() throws Exception {
-		// to be completed
 		this.jvnObjectId = 0;
 		this.jvnObjectList = new HashMap<Integer,JvnObject>();
 		this.jvnServerList = new ArrayList<JvnRemoteServer>();// CECI EST FAUX
 		// Hashmap avec couple Obj - Hashmap dde l'état du lock sur les serva
 		this.objectServerState = new HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>>();
 		this.remoteObjectList = new HashMap<String, JvnObject>();
-		this.registry = LocateRegistry.getRegistry();
-		JvnRemoteCoord remote_stub = (JvnRemoteCoord) UnicastRemoteObject.exportObject(this, 0);
-		registry.bind("coord_service", remote_stub);
-		System.out.println("Coord service UP");
+		this.jvnObjectIdList = new HashMap<String, Integer>();
+
+		// Create registry and bind coordinator
+		registry = LocateRegistry.createRegistry(1099);
+		registry.bind("coord_service", this);
 	}
 
 	/**
@@ -93,11 +104,17 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 */
 	public void registerjvnServer(JvnRemoteServer js) throws java.rmi.RemoteException {
 		//DANS LABSOLU NECESSAIRE DE RAJOUTER UN LOCK ICI
+		System.out.println("registerjvnServer");
 		jvnServerList.add(js);
+		if (jvnObjectId == 0) {
+			System.out.println("jvnObjectId 0");
+			return;
+		}
 		for(int i=0;i<=jvnObjectId;i++) {
 			HashMap<JvnRemoteServer, LockStateEnum> tempMapState = this.objectServerState.get(i);
 			tempMapState.put(js, LockStateEnum.NOREF);
 		}
+		System.out.println("registerjvnServer done");
 	}
 	/**
 	 * Get the reference of a JVN object managed by a given JVN server

@@ -1,8 +1,7 @@
 /***
  * JAVANAISE API
- * Contact:
  *
- * Authors:
+ * Authors: Florent Pouzol, Hugo Triolet, Yazid Cheriti
  */
 
 package jvn;
@@ -81,7 +80,7 @@ public class JvnObjectImpl implements JvnObject {
 		default:
 			break;
 		}
-		this.notifyAll();
+		// TODO: notifyAll(); // thread owner issue to fix
 	}
 
 	/**
