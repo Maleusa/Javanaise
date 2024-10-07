@@ -110,6 +110,12 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			System.out.println("jvnObjectId 0");
 			return;
 		}
+		for(Entry<Integer, HashMap<JvnRemoteServer,LockStateEnum>> entrytemp : this.objectServerState.entrySet()) {
+			HashMap<JvnRemoteServer,LockStateEnum> tempmap = 
+					this.objectServerState.get(entrytemp.getKey());
+			tempmap.put(js, LockStateEnum.NOLOCK);
+		}
+		this.objectServerState.forEach(null);
 		/*for(int i=0;i<=jvnObjectId;i++) {
 			HashMap<JvnRemoteServer, LockStateEnum> tempMapState = this.objectServerState.get(i);
 			tempMapState.put(js, LockStateEnum.NOREF);
