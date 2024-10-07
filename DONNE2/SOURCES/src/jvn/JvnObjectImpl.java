@@ -15,17 +15,18 @@ import java.rmi.RemoteException;
  */
 
 public class JvnObjectImpl implements JvnObject {
+	@Serial
 	private static final long serialVersionUID = 1L;
-	private LockStateEnum lockState;
+	private transient LockStateEnum lockState;
 	private transient JvnServerImpl localServer;
 	private int id;
 	private Serializable object;
 	
-	public JvnObjectImpl(Serializable object, JvnServerImpl jvnServerImpl,int id) {
+	public JvnObjectImpl(Serializable object, JvnServerImpl jvnServerImpl, int id) {
 		this.setObject(object);
 		this.setLocalServer(jvnServerImpl);
-		this.lockState=LockStateEnum.NOLOCK;
-		this.id=id;
+		this.lockState = LockStateEnum.NOLOCK;
+		this.id = id;
 	}
 
 	/**
@@ -80,7 +81,7 @@ public class JvnObjectImpl implements JvnObject {
 		default:
 			break;
 		}
-		// TODO: notifyAll(); // thread owner issue to fix
+		//this.notifyAll(); // thread owner issue to fix
 	}
 
 	/**
@@ -98,7 +99,7 @@ public class JvnObjectImpl implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public Serializable jvnGetSharedObject() throws jvn.JvnException {
-		return this;
+		return this.object;
 	}
 
 	/**
@@ -159,7 +160,7 @@ public class JvnObjectImpl implements JvnObject {
 	}
 
 	public Serializable getObject() {
-		return object;
+		return this.object;
 	}
 
 	public void setObject(Serializable object) {

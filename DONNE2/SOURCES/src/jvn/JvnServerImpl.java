@@ -27,7 +27,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	private Registry registry;
 	private int id;
 
-	private final HashMap<String, JvnObject> cachedObject;
+	private final HashMap<Integer, JvnObject> cachedObjects;
 
 	/**
 	* Default constructor
@@ -37,7 +37,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		super();
 		Random rand = new Random();
 		this.id = rand.nextInt();
-		this.cachedObject = new HashMap<String, JvnObject>();
+		this.cachedObjects = new HashMap<Integer, JvnObject>();
 		this.registry = LocateRegistry.getRegistry();
 		this.jvnCoordinator = (JvnRemoteCoord) registry.lookup("coord_service");
 		this.jvnCoordinator.registerjvnServer(this);
@@ -78,8 +78,10 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	**/
 	public JvnObject jvnCreateObject(Serializable o) throws jvn.JvnException, RemoteException {
 		int id = this.jvnCoordinator.jvnGetObjectId();
+		System.out.println("jvnCreateObject -> o =");
+		System.out.println(o.toString());
 		JvnObject jvnObject = new JvnObjectImpl(o,this,id);
-		cachedObject.put(this.id+" "+ this.cachedObject.size()+ " ", jvnObject);
+		cachedObjects.put(this.id, jvnObject);
 		return jvnObject;
 	}
 
@@ -91,6 +93,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	**/
 	public void jvnRegisterObject(String jon, JvnObject jo) throws jvn.JvnException {
 		try {
+			cachedObjects.put(jo.jvnGetObjectId(), jo);
 			this.jvnCoordinator.jvnRegisterObject(jon, jo, js);
 		} catch (RemoteException | JvnException e) {
 			e.printStackTrace();
@@ -112,7 +115,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		}
 		if (object != null) {
 			object.setLocalServer(this);;
-			this.cachedObject.put(jon, object);
+			this.cachedObjects.put(object.jvnGetObjectId(), object);
 		}
 		return object;
 	}	
@@ -124,7 +127,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @throws  JvnException
 	**/
 	public Serializable jvnLockRead(int joi)throws JvnException {
-		Serializable obj = this.cachedObject.get(joi).jvnGetSharedObject();
+		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
 		try {
 			obj = this.jvnCoordinator.jvnLockRead(joi, this);
 		} catch (RemoteException | JvnException e) {
@@ -140,7 +143,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @throws  JvnException
 	**/
 	public Serializable jvnLockWrite(int joi) throws JvnException {
-		Serializable obj = this.cachedObject.get(joi).jvnGetSharedObject();
+		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
 		try {
 			obj = this.jvnCoordinator.jvnLockWrite(joi, this);
 		} catch (RemoteException | JvnException e) {
@@ -157,7 +160,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @throws java.rmi.RemoteException,JvnException
 	**/
 	public void jvnInvalidateReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
-		this.cachedObject.get(joi).jvnInvalidateReader();
+		this.cachedObjects.get(joi).jvnInvalidateReader();
 	}
 	    
 	/**
@@ -167,7 +170,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @throws java.rmi.RemoteException,JvnException
 	**/
 	public Serializable jvnInvalidateWriter(int joi) throws java.rmi.RemoteException,jvn.JvnException {
-		return this.cachedObject.get(joi).jvnInvalidateWriter();
+		return this.cachedObjects.get(joi).jvnInvalidateWriter();
 	}
 	
 	/**
@@ -177,7 +180,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @throws java.rmi.RemoteException,JvnException
 	**/
 	public Serializable jvnInvalidateWriterForReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
-		return this.cachedObject.get(joi).jvnInvalidateWriterForReader();
+		return this.cachedObjects.get(joi).jvnInvalidateWriterForReader();
 	}
 
 }

@@ -68,7 +68,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException,JvnException
 	 **/
 	public int jvnGetObjectId() throws java.rmi.RemoteException, jvn.JvnException {
-
 		return this.jvnObjectId += 1;
 	}
 
@@ -87,6 +86,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			return;
 		int joi=jo.jvnGetObjectId();
 		this.jvnObjectIdList.put( jon,joi);
+		this.jvnObjectList.put(joi, jo);
 		this.remoteObjectList.put(jon, jo);
 		HashMap<JvnRemoteServer,LockStateEnum> tempHash = new HashMap<JvnRemoteServer, LockStateEnum>();
 		for (JvnRemoteServer server: jvnServerList) {
@@ -145,22 +145,22 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
 	public Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		if (!this.jvnServerList.contains(js))// to be completed
-			throw new JvnException("server not registered !");
+		//if (!this.jvnServerList.contains(js))// to be completed
+		//	throw new JvnException("server not registered !");
 		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
 		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
 			if(jr.getValue()==LockStateEnum.READWRITE || jr.getValue()== LockStateEnum.WRITELOCK) {
 				js.jvnInvalidateReader(joi);
-				return LockStateEnum.NOLOCK;
+				return jvnObjectList.get(joi).jvnGetSharedObject();
 			}
 			if(jr.getValue()==LockStateEnum.READWRITECACHED) {
 				jr.getKey().jvnInvalidateWriterForReader(joi);
 				objectStateMap.replace(js, LockStateEnum.READLOCK);
-				return LockStateEnum.READLOCK;
+				return jvnObjectList.get(joi).jvnGetSharedObject();
 			}
 		}
 		objectStateMap.replace(js, LockStateEnum.READLOCK);
-		return LockStateEnum.READLOCK;
+		return jvnObjectList.get(joi).jvnGetSharedObject();
 	}
 
 	/**
@@ -172,22 +172,22 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
 	public Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		if (!this.jvnServerList.contains(js))// to be completed
-			return null;
+		//if (!this.jvnServerList.contains(js))// to be completed
+		//	return null;
 		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
 		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
 			if(jr.getValue()==LockStateEnum.READWRITE || jr.getValue()== LockStateEnum.WRITELOCK) {
 				js.jvnInvalidateWriter(joi);
-				return LockStateEnum.NOLOCK;
+				return jvnObjectList.get(joi).jvnGetSharedObject();
 			}
 			if(jr.getValue()==LockStateEnum.READWRITECACHED) {
 				jr.getKey().jvnInvalidateWriterForReader(joi);
 				objectStateMap.replace(js, LockStateEnum.WRITELOCK);
-				return LockStateEnum.WRITELOCK;
+				return jvnObjectList.get(joi).jvnGetSharedObject();
 			}
 		}
 		objectStateMap.replace(js, LockStateEnum.WRITELOCK);
-		return LockStateEnum.WRITELOCK;
+		return jvnObjectList.get(joi).jvnGetSharedObject();
 
 	}
 
