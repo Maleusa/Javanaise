@@ -26,7 +26,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	private ArrayList<JvnRemoteServer> jvnServerList;
 	private HashMap<String, JvnObject> remoteObjectList;
 	private HashMap<Integer,JvnObject> jvnObjectList;
-	private HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>> objectServerState;
 	private HashMap<Integer, ArrayList<JvnRemoteServer>> readerList;
 	private HashMap<Integer, JvnRemoteServer> writerList;
 
@@ -39,7 +38,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		for (String name : boundNames) {
 			System.out.println(name);
 		}
-
+		
 		System.out.println("Coord service UP");
 	}
 
@@ -51,9 +50,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	private JvnCoordImpl() throws Exception {
 		this.jvnObjectId = 0;
 		this.jvnObjectList = new HashMap<Integer,JvnObject>();
-		this.jvnServerList = new ArrayList<JvnRemoteServer>();// CECI EST FAUX
-		// Hashmap avec couple Obj - Hashmap dde l'état du lock sur les serva
-		this.objectServerState = new HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>>();
+		this.jvnServerList = new ArrayList<JvnRemoteServer>();
 		this.remoteObjectList = new HashMap<String, JvnObject>();
 		this.jvnObjectIdList = new HashMap<String, Integer>();
 		this.readerList=new HashMap<Integer, ArrayList<JvnRemoteServer>>();
@@ -90,14 +87,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		this.jvnObjectIdList.put( jon,joi);
 		this.jvnObjectList.put(joi, jo);
 		this.remoteObjectList.put(jon, jo);
-		HashMap<JvnRemoteServer,LockStateEnum> tempHash = new HashMap<JvnRemoteServer, LockStateEnum>();
-		for (JvnRemoteServer server: jvnServerList) {
-		if(server!=js)
-			tempHash.put(server, LockStateEnum.NOREF);
-		else
-			tempHash.put(server,LockStateEnum.NOLOCK);
-		}
-		this.objectServerState.put(joi,tempHash);
+		ArrayList<JvnRemoteServer> templist = new ArrayList<>();
+		this.readerList.put(joi, templist);
+		this.writerList.put(joi, null);
 	}
 	/**
 	 * Register a new sJVN server
@@ -108,19 +100,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		//DANS LABSOLU NECESSAIRE DE RAJOUTER UN LOCK ICI
 		System.out.println("registerjvnServer");
 		jvnServerList.add(js);
-		if (jvnObjectId == 0) {
-			System.out.println("jvnObjectId 0");
-			return;
-		}
-		for(Entry<Integer, HashMap<JvnRemoteServer,LockStateEnum>> entrytemp : this.objectServerState.entrySet()) {
-			HashMap<JvnRemoteServer,LockStateEnum> tempmap = 
-					this.objectServerState.get(entrytemp.getKey());
-			tempmap.put(js, LockStateEnum.NOLOCK);
-		}
-		/*for(int i=0;i<=jvnObjectId;i++) {
-			HashMap<JvnRemoteServer, LockStateEnum> tempMapState = this.objectServerState.get(i);
-			tempMapState.put(js, LockStateEnum.NOREF);
-		}*/
 		System.out.println("registerjvnServer done");
 	}
 	/**
@@ -138,7 +117,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			throw new JvnException("remote object not registered!")	;	
 		Integer id = this.jvnObjectIdList.get(jon);
 		JvnObject objectLooked= this.jvnObjectList.get(id);
-		this.objectServerState.get(id).replace(js, LockStateEnum.NOLOCK);
 		return objectLooked; 
 
 	}
@@ -189,6 +167,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		if (writer != null && (!writer.equals(js))) {
 			// Invalidate writer
 			serializable = writer.jvnInvalidateWriter(joi);
+		
 			
 
 		}

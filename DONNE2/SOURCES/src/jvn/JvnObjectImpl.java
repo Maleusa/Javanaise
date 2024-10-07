@@ -17,7 +17,7 @@ import java.rmi.RemoteException;
 public class JvnObjectImpl implements JvnObject {
 	@Serial
 	private static final long serialVersionUID = 1L;
-	private transient LockStateEnum lockState;
+	private LockStateEnum lockState;
 	private transient JvnServerImpl localServer;
 	private int id;
 	private Serializable object;
@@ -34,14 +34,14 @@ public class JvnObjectImpl implements JvnObject {
 	 *
 	 * @throws JvnException
 	 **/
-	public void jvnLockRead() throws jvn.JvnException {
+	public synchronized void jvnLockRead() throws jvn.JvnException {
 		switch(this.lockState) {
 		case NOLOCK:
 			this.object=this.localServer.jvnLockRead(id);
 			this.lockState=LockStateEnum.READLOCK;
 			break;
 		case WRITELOCK:
-			this.lockState=LockStateEnum.READWRITECACHED;
+			this.lockState=LockStateEnum.READLOCK;
 			break;
 		case READLOCK:
 			this.lockState=LockStateEnum.READLOCK;
@@ -57,8 +57,13 @@ public class JvnObjectImpl implements JvnObject {
 	 *
 	 * @throws JvnException
 	 **/
-	public void jvnLockWrite() throws jvn.JvnException {
+	public synchronized void jvnLockWrite() throws jvn.JvnException {
 		switch(this.lockState) {
+		case WRITELOCKCACHED:
+			this.lockState=LockStateEnum.WRITELOCK;
+			break;
+		case WRITELOCK:
+			break;
 		default:
 			this.object=this.localServer.jvnLockWrite(this.id);
 			this.lockState=LockStateEnum.WRITELOCK;
@@ -70,7 +75,7 @@ public class JvnObjectImpl implements JvnObject {
 	 *
 	 * @throws JvnException
 	 **/
-	public void jvnUnLock() throws jvn.JvnException {
+	public synchronized void jvnUnLock() throws jvn.JvnException {
 		switch(this.lockState) {
 		case READLOCK:
 			this.lockState=LockStateEnum.READLOCKCACHED;
@@ -81,7 +86,7 @@ public class JvnObjectImpl implements JvnObject {
 		default:
 			break;
 		}
-		//this.notifyAll(); // thread owner issue to fix
+		this.notifyAll(); // thread owner issue to fix
 	}
 
 	/**
@@ -107,13 +112,16 @@ public class JvnObjectImpl implements JvnObject {
 	 *
 	 * @throws JvnException
 	 **/
-	public void jvnInvalidateReader() throws jvn.JvnException {
-		try {
-			this.wait();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public synchronized void jvnInvalidateReader() throws jvn.JvnException {
+		while(this.lockState!=LockStateEnum.READLOCKCACHED) {
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+		
 		this.lockState=LockStateEnum.NOLOCK;
 	}
 
@@ -123,13 +131,16 @@ public class JvnObjectImpl implements JvnObject {
 	 * @return the current JVN object state
 	 * @throws JvnException
 	 **/
-	public Serializable jvnInvalidateWriter() throws jvn.JvnException {
-		try {
-			this.wait();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public synchronized Serializable jvnInvalidateWriter() throws jvn.JvnException {
+		while(this.lockState!=LockStateEnum.WRITELOCKCACHED) {
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+		
 		this.lockState = LockStateEnum.NOLOCK;
 		return this.object;
 	}
@@ -140,15 +151,29 @@ public class JvnObjectImpl implements JvnObject {
 	 * @return the current JVN object state
 	 * @throws JvnException
 	 **/
-	public Serializable jvnInvalidateWriterForReader() throws jvn.JvnException {
-		try {
-			this.wait();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		this.lockState = LockStateEnum.READLOCKCACHED;
-		return this.object;
+	public synchronized Serializable jvnInvalidateWriterForReader() throws jvn.JvnException {
+		switch (this.lockState) {
+        case WRITELOCK:
+            while (this.lockState == LockStateEnum.WRITELOCK) {
+                try {
+                    this.wait();
+                } catch (InterruptedException ex) {
+              
+                    ex.printStackTrace();
+                    Thread.currentThread().interrupt();
+
+                }
+            }
+            this.lockState = LockStateEnum.READLOCKCACHED;
+            break;
+        case READWRITECACHED:
+        case WRITELOCKCACHED:
+            this.lockState=LockStateEnum.READLOCKCACHED;
+            break;
+        default:
+            
+    }
+    return this.object;
 	}
 
 	public JvnServerImpl getLocalServer() {

@@ -124,7 +124,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
-	public Serializable jvnLockRead(int joi)throws JvnException {
+	public synchronized Serializable jvnLockRead(int joi)throws JvnException {
 		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
 		try {
 			obj = this.jvnCoordinator.jvnLockRead(joi, this);
@@ -140,7 +140,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @return the current JVN object state
 	* @throws  JvnException
 	**/
-	public Serializable jvnLockWrite(int joi) throws JvnException {
+	public synchronized Serializable jvnLockWrite(int joi) throws JvnException {
 		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
 		try {
 			obj = this.jvnCoordinator.jvnLockWrite(joi, this);
@@ -157,7 +157,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @return void
 	* @throws java.rmi.RemoteException,JvnException
 	**/
-	public void jvnInvalidateReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
+	public synchronized void jvnInvalidateReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
 		this.cachedObjects.get(joi).jvnInvalidateReader();
 	}
 	    
@@ -167,7 +167,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @return the current JVN object state
 	* @throws java.rmi.RemoteException,JvnException
 	**/
-	public Serializable jvnInvalidateWriter(int joi) throws java.rmi.RemoteException,jvn.JvnException {
+	public synchronized Serializable jvnInvalidateWriter(int joi) throws java.rmi.RemoteException,jvn.JvnException {
 		return this.cachedObjects.get(joi).jvnInvalidateWriter();
 	}
 	
@@ -177,7 +177,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	* @return the current JVN object state
 	* @throws java.rmi.RemoteException,JvnException
 	**/
-	public Serializable jvnInvalidateWriterForReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
+	public synchronized Serializable jvnInvalidateWriterForReader(int joi) throws java.rmi.RemoteException,jvn.JvnException {
 		return this.cachedObjects.get(joi).jvnInvalidateWriterForReader();
 	}
 

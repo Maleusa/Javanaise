@@ -1,6 +1,8 @@
 package jvn;
 
-public enum LockStateEnum {
+import java.io.Serializable;
+
+public enum LockStateEnum implements Serializable {
 NOREF,
 NOLOCK,
 READLOCK,
