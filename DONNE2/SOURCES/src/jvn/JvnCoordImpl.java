@@ -142,6 +142,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			 * If the writer is not the one calling jvnLockread function
 			 * add it to the list of reader
 			 */
+			jo.setObject(serializable);
 			this.readerList.get(joi).add(writer);
 
 		}
@@ -167,7 +168,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		if (writer != null && (!writer.equals(js))) {
 			// Invalidate writer
 			serializable = writer.jvnInvalidateWriter(joi);
-		
+			jo.setObject(serializable);
 			
 
 		}
@@ -178,7 +179,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 				reader.jvnInvalidateReader(joi);
 		}
 
-		this.readerList.get(joi).clear();
+		//this.readerList.get(joi).clear();
 		this.writerList.put(joi, js);
 		return serializable;	}
 
