@@ -110,10 +110,10 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			System.out.println("jvnObjectId 0");
 			return;
 		}
-		for(int i=0;i<=jvnObjectId;i++) {
+		/*for(int i=0;i<=jvnObjectId;i++) {
 			HashMap<JvnRemoteServer, LockStateEnum> tempMapState = this.objectServerState.get(i);
 			tempMapState.put(js, LockStateEnum.NOREF);
-		}
+		}*/
 		System.out.println("registerjvnServer done");
 	}
 	/**
@@ -149,14 +149,16 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		//	throw new JvnException("server not registered !");
 		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
 		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
-			if(jr.getValue()==LockStateEnum.READWRITE || jr.getValue()== LockStateEnum.WRITELOCK) {
-				js.jvnInvalidateReader(joi);
-				return jvnObjectList.get(joi).jvnGetSharedObject();
-			}
-			if(jr.getValue()==LockStateEnum.READWRITECACHED) {
-				jr.getKey().jvnInvalidateWriterForReader(joi);
-				objectStateMap.replace(js, LockStateEnum.READLOCK);
-				return jvnObjectList.get(joi).jvnGetSharedObject();
+			if (!jr.getKey().equals(js)) {
+				if (jr.getValue() == LockStateEnum.READWRITE || jr.getValue() == LockStateEnum.WRITELOCK) {
+					js.jvnInvalidateReader(joi);
+					return jvnObjectList.get(joi).jvnGetSharedObject();
+				}
+				if (jr.getValue() == LockStateEnum.READWRITECACHED) {
+					jr.getKey().jvnInvalidateWriterForReader(joi);
+					objectStateMap.replace(js, LockStateEnum.READLOCK);
+					return jvnObjectList.get(joi).jvnGetSharedObject();
+				}
 			}
 		}
 		objectStateMap.replace(js, LockStateEnum.READLOCK);
@@ -176,14 +178,16 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		//	return null;
 		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
 		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
-			if(jr.getValue()==LockStateEnum.READWRITE || jr.getValue()== LockStateEnum.WRITELOCK) {
-				js.jvnInvalidateWriter(joi);
-				return jvnObjectList.get(joi).jvnGetSharedObject();
-			}
-			if(jr.getValue()==LockStateEnum.READWRITECACHED) {
-				jr.getKey().jvnInvalidateWriterForReader(joi);
-				objectStateMap.replace(js, LockStateEnum.WRITELOCK);
-				return jvnObjectList.get(joi).jvnGetSharedObject();
+			if (!jr.getKey().equals(js)) {
+				if (jr.getValue() == LockStateEnum.READWRITE || jr.getValue() == LockStateEnum.WRITELOCK) {
+					js.jvnInvalidateWriter(joi);
+					return jvnObjectList.get(joi).jvnGetSharedObject();
+				}
+				if (jr.getValue() == LockStateEnum.READWRITECACHED) {
+					jr.getKey().jvnInvalidateWriterForReader(joi);
+					objectStateMap.replace(js, LockStateEnum.WRITELOCK);
+					return jvnObjectList.get(joi).jvnGetSharedObject();
+				}
 			}
 		}
 		objectStateMap.replace(js, LockStateEnum.WRITELOCK);
