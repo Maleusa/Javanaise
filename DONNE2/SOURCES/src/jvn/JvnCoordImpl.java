@@ -27,7 +27,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	private HashMap<String, JvnObject> remoteObjectList;
 	private HashMap<Integer,JvnObject> jvnObjectList;
 	private HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>> objectServerState;
-
+	private HashMap<Integer, ArrayList<JvnRemoteServer>> readerList;
+	private HashMap<Integer, JvnRemoteServer> writerList;
 
 	public static void main(String[] args) throws Exception {
 		JvnCoordImpl jc = new JvnCoordImpl();
@@ -55,7 +56,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		this.objectServerState = new HashMap<Integer, HashMap<JvnRemoteServer, LockStateEnum>>();
 		this.remoteObjectList = new HashMap<String, JvnObject>();
 		this.jvnObjectIdList = new HashMap<String, Integer>();
-
+		this.readerList=new HashMap<Integer, ArrayList<JvnRemoteServer>>();
+		this.writerList= new HashMap<Integer,JvnRemoteServer>();
 		// Create registry and bind coordinator
 		registry = LocateRegistry.createRegistry(1099);
 		registry.bind("coord_service", this);
@@ -115,7 +117,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 					this.objectServerState.get(entrytemp.getKey());
 			tempmap.put(js, LockStateEnum.NOLOCK);
 		}
-		this.objectServerState.forEach(null);
 		/*for(int i=0;i<=jvnObjectId;i++) {
 			HashMap<JvnRemoteServer, LockStateEnum> tempMapState = this.objectServerState.get(i);
 			tempMapState.put(js, LockStateEnum.NOREF);
@@ -150,25 +151,25 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @return the current JVN object state
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
-	public Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		//if (!this.jvnServerList.contains(js))// to be completed
-		//	throw new JvnException("server not registered !");
-		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
-		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
-			if (!jr.getKey().equals(js)) {
-				if (jr.getValue() == LockStateEnum.READWRITE || jr.getValue() == LockStateEnum.WRITELOCK) {
-					js.jvnInvalidateReader(joi);
-					return jvnObjectList.get(joi).jvnGetSharedObject();
-				}
-				if (jr.getValue() == LockStateEnum.READWRITECACHED) {
-					jr.getKey().jvnInvalidateWriterForReader(joi);
-					objectStateMap.replace(js, LockStateEnum.READLOCK);
-					return jvnObjectList.get(joi).jvnGetSharedObject();
-				}
-			}
+	public synchronized Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
+		JvnObject jo = this.jvnObjectList.get(joi);
+		Serializable serializable = jo.jvnGetSharedObject();
+		JvnRemoteServer writer = this.writerList.get(joi);
+
+		// if object is locked in W
+		if (writer != null && !writer.equals(js)) {
+			serializable = writer.jvnInvalidateWriterForReader(joi);
+			this.writerList.put(joi, null);
+			/**
+			 * If the writer is not the one calling jvnLockread function
+			 * add it to the list of reader
+			 */
+			this.readerList.get(joi).add(writer);
+
 		}
-		objectStateMap.replace(js, LockStateEnum.READLOCK);
-		return jvnObjectList.get(joi).jvnGetSharedObject();
+
+		this.readerList.get(joi).add(js);
+		return serializable;
 	}
 
 	/**
@@ -179,27 +180,28 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @return the current JVN object state
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
-	public Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		//if (!this.jvnServerList.contains(js))// to be completed
-		//	return null;
-		HashMap<JvnRemoteServer,LockStateEnum> objectStateMap = this.objectServerState.get(joi);
-		for(Entry<JvnRemoteServer, LockStateEnum> jr : objectStateMap.entrySet()) {
-			if (!jr.getKey().equals(js)) {
-				if (jr.getValue() == LockStateEnum.READWRITE || jr.getValue() == LockStateEnum.WRITELOCK) {
-					js.jvnInvalidateWriter(joi);
-					return jvnObjectList.get(joi).jvnGetSharedObject();
-				}
-				if (jr.getValue() == LockStateEnum.READWRITECACHED) {
-					jr.getKey().jvnInvalidateWriterForReader(joi);
-					objectStateMap.replace(js, LockStateEnum.WRITELOCK);
-					return jvnObjectList.get(joi).jvnGetSharedObject();
-				}
-			}
-		}
-		objectStateMap.replace(js, LockStateEnum.WRITELOCK);
-		return jvnObjectList.get(joi).jvnGetSharedObject();
+	public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
+		JvnObject jo = this.jvnObjectList.get(joi);
+		Serializable serializable = jo.jvnGetSharedObject();
+		JvnRemoteServer writer = this.writerList.get(joi);
 
-	}
+		// Case Write
+		if (writer != null && (!writer.equals(js))) {
+			// Invalidate writer
+			serializable = writer.jvnInvalidateWriter(joi);
+			
+
+		}
+
+		// Invalidate readers
+		for (JvnRemoteServer reader : this.readerList.get(joi)) {
+			if (!reader.equals(js))
+				reader.jvnInvalidateReader(joi);
+		}
+
+		this.readerList.get(joi).clear();
+		this.writerList.put(joi, js);
+		return serializable;	}
 
 	/**
 	 * A JVN server terminates
