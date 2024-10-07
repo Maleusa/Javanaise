@@ -179,7 +179,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 				reader.jvnInvalidateReader(joi);
 		}
 
-		//this.readerList.get(joi).clear();
+		this.readerList.get(joi).clear();
 		this.writerList.put(joi, js);
 		return serializable;	}
 
