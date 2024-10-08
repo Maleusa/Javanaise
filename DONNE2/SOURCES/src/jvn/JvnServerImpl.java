@@ -15,6 +15,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.io.*;
+import java.lang.reflect.Proxy;
 
 
 public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer, JvnRemoteServer { 
@@ -79,7 +80,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	public JvnObject jvnCreateObject(Serializable o) throws jvn.JvnException, RemoteException {
 		int id = this.jvnCoordinator.jvnGetObjectId();
 		JvnObject jvnObject = new JvnObjectImpl(o,this,id);
-		cachedObjects.put(this.id, jvnObject);
+		this.cachedObjects.put(id, jvnObject);
 		return jvnObject;
 	}
 
@@ -91,7 +92,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	**/
 	public void jvnRegisterObject(String jon, JvnObject jo) throws jvn.JvnException {
 		try {
-			cachedObjects.put(jo.jvnGetObjectId(), jo);
+//			cachedObjects.put(jo.jvnGetObjectId(), jo);
 			this.jvnCoordinator.jvnRegisterObject(jon, jo, js);
 		} catch (RemoteException | JvnException e) {
 			e.printStackTrace();
@@ -115,6 +116,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 			object.setLocalServer(this);;
 			this.cachedObjects.put(object.jvnGetObjectId(), object);
 		}
+		
 		return object;
 	}	
 

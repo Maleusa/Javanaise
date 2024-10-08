@@ -66,10 +66,10 @@ public class Irc {
         data = new TextField(40);
         frame.add(data);
         Button read_button = new Button("read");
-        read_button.addActionListener(new readListener(this));
+        read_button.addActionListener(new readListenerC(this));
         frame.add(read_button);
         Button write_button = new Button("write");
-        write_button.addActionListener(new writeListener(this));
+        write_button.addActionListener(new writeListenerC(this));
         frame.add(write_button);
         frame.setSize(545, 201);
         text.setBackground(Color.black);
@@ -81,10 +81,10 @@ public class Irc {
 /**
  * Internal class to manage user events (read) on the CHAT application
  **/
-class readListener implements ActionListener {
+class readListenerC implements ActionListener {
     Irc irc;
 
-    public readListener(Irc i) {
+    public readListenerC(Irc i) {
         irc = i;
     }
 
@@ -114,10 +114,10 @@ class readListener implements ActionListener {
 /**
  * Internal class to manage user events (write) on the CHAT application
  **/
-class writeListener implements ActionListener {
+class writeListenerC implements ActionListener {
     Irc irc;
 
-    public writeListener(Irc i) {
+    public writeListenerC(Irc i) {
         irc = i;
     }
 
