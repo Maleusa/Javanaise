@@ -1,131 +1,139 @@
-package irc;
+/***
+ * Irc class : simple implementation of a chat using JAVANAISE
+ * Contact: 
+ *
+ * Authors: 
+ */
 
+package irc;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.io.Serializable;
-import java.rmi.RemoteException;
+
+import javax.swing.JFrame;
 
 import jvn.JvnException;
-import jvn.JvnObject;
+import jvn.JvnInvocationHandler;
 import jvn.JvnServerImpl;
 
 
 public class IrcA {
-	protected TextArea text;
-	protected TextField data;
-	Frame frame;
-	SentenceAnnotation sentence;
+	public TextArea text;
+	public TextField data;
+	JFrame frame;
+	public SentenceAnnotation sentence;
 
-	/**
-	 * main method
-	 * create a JVN object nammed IRC for representing the Chat application
-	 **/
-	public static void main(String[] argv) {
+
+  /**
+  * main method
+  * create a JVN object named IRC for representing the Chat application
+  **/
+	public static void main(String argv[]) {
+		// activate log
+		//Log.activate("verrous");
+		SentenceAnnotation s=null;
+		
 		try {
+			// Create (or get if it already exists) a shared object named IRC
+			s = (SentenceAnnotation) JvnInvocationHandler.newInstance(new Sentence(), "IRC");
 
-			// initialize JVN
-			JvnServerImpl js = JvnServerImpl.jvnGetServer();
-
-			// look up the IRC object in the JVN server
-			// if not found, create it, and register it in the JVN server
-			SentenceAnnotation jo = (SentenceAnnotation) js.jvnLookupObject("IRC");
-			if (jo == null) {
-                jo = (SentenceAnnotation) js.jvnCreateObject((Serializable) new Sentence());
-                // after creation, I have a write lock on the object
-                
-                js.jvnRegisterObject("IRC", (JvnObject) jo);
-            }
 			// create the graphical part of the Chat application
-			new IrcA(jo);
-
-		} catch (Exception e) {
+			new IrcA(s);
+		
+		} catch (JvnException e) {
 			e.printStackTrace();
-			System.out.println("IRC problem : " + e.getMessage());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
 	/**
-	 * IRC Constructor
-	 * 
-	 * @param jo the JVN object representing the Chat
-	 **/
-	public IrcA(SentenceAnnotation jo) {
-		sentence = jo;
-		frame = new Frame();
-		frame.setLayout(new GridLayout(1, 1));
-		text = new TextArea(10, 60);
+	 * Create the chat GUI
+	 * @param s the sentence object
+	 */
+	public IrcA(SentenceAnnotation s) {
+		sentence = s;
+		frame=new JFrame();
+		
+		// close the window
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.addWindowListener(new WindowAdapter(){
+		    public void windowClosing(WindowEvent e){
+		        try {
+		        	JvnServerImpl s = JvnServerImpl.jvnGetServer();
+					s.jvnTerminate();
+				} catch (JvnException e1) {
+					System.out.println("Coordinator not connected.");
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+		    }
+		});
+				
+		frame.setLayout(new GridLayout(1,1));
+		text=new TextArea(10,60);
 		text.setEditable(false);
 		text.setForeground(Color.red);
 		frame.add(text);
-		data = new TextField(40);
+		data=new TextField(40);
 		frame.add(data);
-		Button readButton = new Button("read");
-		readButton.addActionListener(new ReadListener(this));
-		frame.add(readButton);
-		Button writeButton = new Button("write");
-		writeButton.addActionListener(new WriteListener(this));
-		frame.add(writeButton);
-		frame.setSize(545, 201);
-		text.setBackground(Color.black);
+		Button read_button = new Button("read");
+		read_button.addActionListener(new readListener(this));
+		frame.add(read_button);
+		Button write_button = new Button("write");
+		write_button.addActionListener(new writeListener(this));
+		frame.add(write_button);
+		frame.setSize(545,201);
+		text.setBackground(Color.black); 
 		frame.setVisible(true);
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				try {
-					JvnServerImpl.jvnGetServer().jvnTerminate();
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				} finally {
-					e.getWindow().dispose();
-				}
-			}
-		});
 	}
 }
 
+
 /**
- * Internal class to manage user events (read) on the CHAT application
- **/
-class ReadListener implements ActionListener {
+* Internal class to manage user events (read) on the CHAT application
+**/
+class readListener implements ActionListener {
 	IrcA irc;
-
-	public ReadListener(IrcA ircA) {
-		irc = ircA;
+  
+	public readListener (IrcA i) {
+		irc = i;
 	}
-
+   
 	/**
-	 * Management of user events
-	 **/
-	public void actionPerformed(ActionEvent e) {
+ 	* Management of user events
+	**/
+	public void actionPerformed (ActionEvent e) {
 		// invoke the method
 		String s = irc.sentence.read();
-
-		// unlock the object && display the read value
-		irc.data.setText(s);
-
-		irc.text.append(s + "\n");
+		
+		// display the read value
+		irc.text.append(s+"\n");
 	}
 }
 
 /**
- * Internal class to manage user events (write) on the CHAT application
- **/
-class WriteListener implements ActionListener {
+* Internal class to manage user events (write) on the CHAT application
+**/
+class writeListener implements ActionListener {
 	IrcA irc;
-
-	public WriteListener(IrcA ircA) {
-		irc = ircA;
+  
+	public writeListener (IrcA i) {
+        irc = i;
 	}
-
+  
 	/**
-	 * Management of user events
-	 **/
-	public void actionPerformed(ActionEvent e) {
+    * Management of user events
+    **/
+	public void actionPerformed (ActionEvent e) {
 		// get the value to be written from the buffer
 		String s = irc.data.getText();
-
-		// lock the object in write mode && invoke the method
+		
+		// invoke the method
 		irc.sentence.write(s);
+		
+		irc.data.setText("");
 	}
 }

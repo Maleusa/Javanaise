@@ -13,12 +13,29 @@ public class JvnInvocationHandler implements InvocationHandler,Serializable {
 		this.object = obj;
 	}
 
-	public static Object newInstance(JvnObject obj) throws JvnException {
-		Object shared = obj.jvnGetSharedObject();
-		return Proxy.newProxyInstance(
-				shared.getClass().getClassLoader(),
-				shared.getClass().getInterfaces(),
-				new JvnInvocationHandler(obj));
+	public JvnInvocationHandler(Serializable obj, String name) throws Exception {
+JvnServerImpl server = JvnServerImpl.jvnGetServer();
+		
+		this.object = server.jvnLookupObject(name);
+		
+		// look up the IRC object in the JVN server
+		// if not found, create it, and register it in the JVN server
+		if(object==null){
+			this.object = server.jvnCreateObject(obj);	
+			if(object == null){
+				throw new JvnException("Cannot create object. Server is full");
+			}
+			
+			this.object.jvnUnLock();
+			server.jvnRegisterObject(name, object);
+		}
+	}
+
+	public static Object newInstance(Serializable obj, String name) throws Exception {
+		return java.lang.reflect.Proxy.newProxyInstance(
+				obj.getClass().getClassLoader(),
+				obj.getClass().getInterfaces(),
+				new JvnInvocationHandler(obj, name));
 	}
 
 	@Override
