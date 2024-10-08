@@ -17,8 +17,23 @@ javac jvn/*.java
 javac -cp jvn/*.java irc/*.java
 ```
 
-### Launch the project from the `src` folder for Windows:
+### Launch the project jvn1 from the `src` folder for Windows:
 ```
 start java jvn.JvnCoordImpl
 start java irc.Irc
+```
+### Launch the project jvn1 from the `src` folder for Linus:
+```
+java jvn.JvnCoordImpl &
+java irc.Irc &
+```
+### Launch the project jvn2 from the `src` folder for Windows:
+```
+start java jvn.JvnCoordImpl
+start java irc.IrcA
+```
+### Launch the project jvn2 from the `src` folder for Linus:
+```
+java jvn.JvnCoordImpl &
+java irc.IrcA &
 ```
