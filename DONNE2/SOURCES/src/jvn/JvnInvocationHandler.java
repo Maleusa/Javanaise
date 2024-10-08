@@ -27,6 +27,7 @@ public class JvnInvocationHandler implements InvocationHandler,Serializable {
 		if (method.isAnnotationPresent(Operation.class)) {
 			switch (method.getAnnotation(Operation.class).name()) {
 				case "read":
+					System.out.println("COUCOU");
 					object.jvnLockRead();
 					break;
 				case "write":
