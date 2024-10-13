@@ -20,17 +20,15 @@ import java.io.Serializable;
 public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord {
     @Serial
     private static final long serialVersionUID = 1L;
-    private static Registry registry;
     private int jvnObjectId;
-    private HashMap<String, Integer> jvnObjectIdList;
-    private ArrayList<JvnRemoteServer> jvnServerList;
-    private HashMap<String, JvnObject> remoteObjectList;
-    private HashMap<Integer, JvnObject> jvnObjectList;
-    private HashMap<Integer, ArrayList<JvnRemoteServer>> readerList;
-    private HashMap<Integer, JvnRemoteServer> writerList;
+    private final HashMap<String, Integer> jvnObjectIdList;
+    private final ArrayList<JvnRemoteServer> jvnServerList;
+    private final HashMap<Integer, JvnObject> jvnObjectList;
+    private final HashMap<Integer, ArrayList<JvnRemoteServer>> readerList;
+    private final HashMap<Integer, JvnRemoteServer> writerList;
 
     public static void main(String[] args) throws Exception {
-        JvnCoordImpl jc = new JvnCoordImpl();
+        new JvnCoordImpl();
         System.out.println("Coordinator service UP");
     }
 
@@ -49,7 +47,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
         this.writerList = new HashMap<Integer, JvnRemoteServer>();
 
         // Create registry and bind coordinator
-        registry = LocateRegistry.createRegistry(1099);
+        Registry registry = LocateRegistry.createRegistry(1099);
         registry.bind("coord_service", this);
     }
 
@@ -74,6 +72,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js)
             throws java.rmi.RemoteException, jvn.JvnException {
         if (!this.jvnServerList.contains(js)) {
+            System.out.println("Skip: JS not found to register the object " + jon);
 			return;
 		}
         int joi = jo.jvnGetObjectId();
@@ -81,8 +80,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
         this.jvnObjectIdList.put(jon, joi);
         this.jvnObjectList.put(joi, jo);
 
-        ArrayList<JvnRemoteServer> tmpList = new ArrayList<>();
-        this.readerList.put(joi, tmpList);
+        this.readerList.put(joi, new ArrayList<JvnRemoteServer>());
         this.writerList.put(joi, null);
     }
 
@@ -102,9 +100,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      *
      * @param jon : the JVN object name
      * @param js  : the remote reference of the JVNServer
-     * @throws java.rmi.RemoteException,JvnException
+     * @throws java.rmi.RemoteException, JvnException
      **/
-    public JvnObject jvnLookupObject(String jon, JvnRemoteServer js) throws java.rmi.RemoteException, jvn.JvnException {
+    public JvnObject jvnLookupObject(String jon, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
         if (!this.jvnServerList.contains(js)) {
             throw new JvnException("Server not found");
         }
@@ -127,18 +125,19 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      **/
     public synchronized Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
         JvnObject jo = this.jvnObjectList.get(joi);
+        if (jo == null) {
+            throw new JvnException("Remote object not found");
+        }
+
         Serializable serializable = jo.jvnGetSharedObject();
         JvnRemoteServer writer = this.writerList.get(joi);
 
-        // If object is locked in W
+        // If object is write locked by another server, invalidate its write lock
+        // and add it to the list of readers
         if (writer != null && !writer.equals(js)) {
             serializable = writer.jvnInvalidateWriterForReader(joi);
-            this.writerList.put(joi, null);
-
-			// If the writer is not the one calling jvnLockRead function
-            // add it to the list of reader
             jo.setObject(serializable);
-
+            this.writerList.put(joi, null);
             this.readerList.get(joi).add(writer);
         }
 
@@ -156,25 +155,30 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      **/
     public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
         JvnObject jo = this.jvnObjectList.get(joi);
+        if (jo == null) {
+            throw new JvnException("Remote object not found");
+        }
+
         Serializable serializable = jo.jvnGetSharedObject();
         JvnRemoteServer writer = this.writerList.get(joi);
 
-        // Case Write
-        if (writer != null && (!writer.equals(js))) {
-            // Invalidate writer
+        // Invalidate lock for the server having a write lock
+        if (writer != null && !writer.equals(js)) {
             serializable = writer.jvnInvalidateWriter(joi);
             jo.setObject(serializable);
         }
 
-        // Invalidate readers
-        for (JvnRemoteServer reader : this.readerList.get(joi)) {
+        // Invalidate lock for the servers having a read lock
+        for (JvnRemoteServer reader: this.readerList.get(joi)) {
             if (!reader.equals(js)) {
 				reader.jvnInvalidateReader(joi);
 			}
         }
 
+        // Set the given js as writer
         this.readerList.get(joi).clear();
         this.writerList.put(joi, js);
+
         return serializable;
     }
 
@@ -185,6 +189,22 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      * @throws java.rmi.RemoteException, JvnException
      **/
     public void jvnTerminate(JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-        this.jvnServerList.remove(js); //TODO: check and clean others variables
+        this.jvnServerList.remove(js);
+
+        // Fetch all objects
+        for (Integer objectId : jvnObjectList.keySet()) {
+
+            // Check and clean readers if necessary
+            ArrayList<JvnRemoteServer> readers = this.readerList.get(objectId);
+            if (readers != null) {
+                readers.remove(js);
+            }
+
+            // Check and clean writer if necessary
+            JvnRemoteServer writer = this.writerList.get(objectId);
+            if (writer != null && writer.equals(js)) {
+                this.writerList.put(objectId, null);
+            }
+        }
     }
 }
