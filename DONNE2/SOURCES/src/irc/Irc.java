@@ -9,10 +9,7 @@ package irc;
 
 import java.awt.*;
 import java.awt.event.*;
-
-
 import jvn.*;
-
 import java.io.*;
 
 
@@ -74,6 +71,19 @@ public class Irc {
         frame.setSize(545, 201);
         text.setBackground(Color.black);
         frame.setVisible(true);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                try {
+                    JvnServerImpl s = JvnServerImpl.jvnGetServer();
+                    s.jvnTerminate();
+                    frame.dispose();
+                    System.exit(0);
+                } catch (Exception ex) {
+                    System.out.println("Cannot execute jvnTerminate");
+                }
+            }
+        });
     }
 }
 
