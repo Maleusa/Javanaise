@@ -74,6 +74,8 @@ public interface JvnRemoteCoord extends Remote {
 	**/
   public void jvnTerminate(JvnRemoteServer js)
 	 throws java.rmi.RemoteException, JvnException;
+	Serializable jvnLockWrite(String joi, JvnRemoteServer js) throws RemoteException, JvnException;
+	
 
  }
 

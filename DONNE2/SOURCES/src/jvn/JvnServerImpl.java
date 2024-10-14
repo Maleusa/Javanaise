@@ -27,7 +27,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
     /**
      * Default constructor
      **/
-    private JvnServerImpl() throws Exception {
+    protected JvnServerImpl() throws Exception {
         super();
         this.cachedObjects = new HashMap<Integer, JvnObject>();
         Registry registry = LocateRegistry.getRegistry();

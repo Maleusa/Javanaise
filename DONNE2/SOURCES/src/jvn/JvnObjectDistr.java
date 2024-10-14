@@ -14,25 +14,25 @@ import java.rmi.RemoteException;
  * to access a given shared object
  */
 
-public class JvnObjectImpl implements JvnObject {
+public class JvnObjectDistr implements JvnObject {
 	@Serial
 	private static final long serialVersionUID = 1L;
 	private LockStateEnum lockState;
 	private transient JvnServerImpl localServer;
 	private transient JvnNode localNode;
 	private transient JvnServerDistrImpl localDistr;
-	private int id;
+	private String id;
 	private Serializable object;
 	
-	public JvnObjectImpl(Serializable object, JvnServerImpl jvnServerImpl, int id) {
+	public JvnObjectDistr(Serializable object, JvnServerDistrImpl jvnServerDistrImpl, String id) {
 		this.setObject(object);
-		this.setLocalServer(jvnServerImpl);
+		this.setLocalDistr(jvnServerDistrImpl);
 		this.lockState = LockStateEnum.NOLOCK;
 		this.id = id;
 	}
 
 
-	public JvnObjectImpl(Serializable jos, JvnServerDistrImpl jvnServerDistrImpl, int id2) {
+	public JvnObjectDistr(Serializable jos, JvnServerDistrImpl jvnServerDistrImpl, int id2) {
 		this.setObject(object);
 		this.setLocalDistr(jvnServerDistrImpl);
 		this.lockState = LockStateEnum.NOLOCK;
@@ -48,7 +48,7 @@ public class JvnObjectImpl implements JvnObject {
 	public synchronized void jvnLockRead() throws jvn.JvnException {
 		switch(this.lockState) {
 		case NOLOCK:
-			this.object=this.localServer.jvnLockRead(id);
+			this.object=this.localDistr.jvnLockRead(id);
 			this.lockState=LockStateEnum.READLOCK;
 			break;
 		case WRITELOCK:
@@ -76,7 +76,7 @@ public class JvnObjectImpl implements JvnObject {
 		case WRITELOCK:
 			break;
 		default:
-			this.object=this.localServer.jvnLockWrite(this.id);
+			this.object=this.localDistr.jvnLockWrite(this.id);
 			this.lockState=LockStateEnum.WRITELOCK;
 		}
 	}
@@ -105,11 +105,8 @@ public class JvnObjectImpl implements JvnObject {
 	 *
 	 * @throws JvnException
 	 **/
-	public int jvnGetObjectId() throws jvn.JvnException {
+	public String jvnGetObjectIdS() throws jvn.JvnException {
 		return this.id;
-	}
-	public String jvnGetObjectIdS() throws JvnException{
-		return (""+this.id);
 	}
 
 	/**
@@ -224,5 +221,12 @@ public class JvnObjectImpl implements JvnObject {
 
 	public void setLocalNode(JvnNode localNode) {
 		this.localNode = localNode;
+	}
+
+
+	@Override
+	public int jvnGetObjectId() throws JvnException {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 }
