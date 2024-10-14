@@ -19,6 +19,7 @@ public class JvnObjectImpl implements JvnObject {
 	private static final long serialVersionUID = 1L;
 	private LockStateEnum lockState;
 	private transient JvnServerImpl localServer;
+	private transient JvnNode localNode;
 	private int id;
 	private Serializable object;
 	
@@ -28,6 +29,7 @@ public class JvnObjectImpl implements JvnObject {
 		this.lockState = LockStateEnum.NOLOCK;
 		this.id = id;
 	}
+
 
 	/**
 	 * Get a Read lock on the shared object
