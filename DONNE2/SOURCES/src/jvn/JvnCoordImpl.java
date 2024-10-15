@@ -92,7 +92,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      */
     public void registerjvnServer(JvnRemoteServer js) throws java.rmi.RemoteException {
         jvnServerList.add(js);
-        System.out.println("Registered a new JvnServer");
+        System.out.println("\nRegistered a new JvnServer");
     }
 
     /**
@@ -124,6 +124,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      * @throws java.rmi.RemoteException, JvnException
      **/
     public synchronized Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
+        System.out.println("\njvnLockRead");
         JvnObject jo = this.jvnObjectList.get(joi);
         if (jo == null) {
             throw new JvnException("Remote object not found");
@@ -139,9 +140,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
             jo.setObject(serializable);
             this.writerList.put(joi, null);
             this.readerList.get(joi).add(writer);
+            this.showLog("Transformed write to read lock", writer);
         }
 
         this.readerList.get(joi).add(js);
+        this.showLog("Delivered read lock", js);
         return serializable;
     }
 
@@ -154,6 +157,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      * @throws java.rmi.RemoteException, JvnException
      **/
     public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
+        System.out.println("\njvnLockWrite");
         JvnObject jo = this.jvnObjectList.get(joi);
         if (jo == null) {
             throw new JvnException("Remote object not found");
@@ -166,18 +170,21 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
         if (writer != null && !writer.equals(js)) {
             serializable = writer.jvnInvalidateWriter(joi);
             jo.setObject(serializable);
+            this.showLog("Invalidate write lock", writer);
         }
 
         // Invalidate lock for the servers having a read lock
         for (JvnRemoteServer reader: this.readerList.get(joi)) {
             if (!reader.equals(js)) {
 				reader.jvnInvalidateReader(joi);
+                this.showLog("Invalidate reader lock", reader);
 			}
         }
 
         // Set the given js as writer
         this.readerList.get(joi).clear();
         this.writerList.put(joi, js);
+        this.showLog("Delivered write lock", js);
 
         return serializable;
     }
@@ -206,5 +213,22 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
                 this.writerList.put(objectId, null);
             }
         }
+    }
+
+    /**
+     * Show message for a specific registered server
+     *
+     * @param msg : text to print
+     * @param js : server object
+     * @throws java.rmi.RemoteException
+     */
+    private void showLog(String msg, JvnRemoteServer js) throws java.rmi.RemoteException {
+        // Define a js id on 4 digits
+        int sum = 0;
+        for (char c : js.toString().toCharArray()) {
+            sum += (int) c;
+        }
+        sum = sum % 10000;
+        System.out.println("[server" + sum + "] " + msg);
     }
 }

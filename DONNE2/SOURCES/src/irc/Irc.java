@@ -85,6 +85,10 @@ public class Irc {
             }
         });
     }
+
+    public JvnObject getSentence() {
+        return sentence;
+    }
 }
 
 
