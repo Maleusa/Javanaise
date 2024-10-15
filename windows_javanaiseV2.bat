@@ -1,8 +1,7 @@
 @echo off
 echo Compiling files...
 
-javac DONNE2/SOURCES/src/jvn/*.java
-javac -cp DONNE2/SOURCES/src/jvn/*.java DONNE2/SOURCES/src/irc/*.java
+javac -cp DONNE2/SOURCES/src/ DONNE2/SOURCES/src/jvn/*.java DONNE2/SOURCES/src/irc/*.java DONNE2/SOURCES/src/tests/*.java
 
 if %errorlevel% neq 0 (
     echo Compilation failed!
@@ -10,13 +9,17 @@ if %errorlevel% neq 0 (
 )
 
 echo Compilation successful
-echo Launching %1 JVN2 clients with the Coordinator
+echo Launching JVN2 clients (x%1) with the Coordinator
 
 cd DONNE2/SOURCES/src
 start java jvn.JvnCoordImpl
 timeout /t 4 >nul
 
 for /L %%i in (1,1,%1) do (
-    start java irc.IrcA
+    start java tests.ClientReadLockATest
+    timeout /t 1 >nul
+    start java tests.ClientWriteLockATest
+    timeout /t 1 >nul
+    start java tests.ClientReadWriteLockATest
     timeout /t 1 >nul
 )
