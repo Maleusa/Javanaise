@@ -9,9 +9,7 @@
 package jvn;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.io.IOException;
 import java.nio.file.*;
 
@@ -42,8 +40,8 @@ public class JvnCoordLogger {
 	}
 
 	/**
-	 * This method finds a parent folder upwards from the current directory.
-	 * Largely inspired by ChatGPT
+	 * This method finds a parent folder upwards from the current directory. Largely
+	 * inspired by ChatGPT
 	 */
 	public static Path findParentFolder(String targetFolderName, Path currentDir) {
 		// Traverse upwards until root
@@ -59,8 +57,7 @@ public class JvnCoordLogger {
 
 	/**
 	 * This method checks if a child directory exists in the parent folder, and if
-	 * it doesn't, it creates it.
-	 * Largely inspired by ChatGPT
+	 * it doesn't, it creates it. Largely inspired by ChatGPT
 	 */
 	public static Path createChildDirectory(Path parentDir, String childDirName) throws IOException {
 		Path childDir = parentDir.resolve(childDirName);
@@ -103,30 +100,43 @@ public class JvnCoordLogger {
 	}
 
 	// Method to read all serialized objects from the log file
-	public List<JvnObject> readObjects(String pathKey) {
-		List<JvnObject> objects = new ArrayList<JvnObject>();
+	public Object readObjects(String pathKey) {
 
 		try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(logsPaths.get(pathKey)))) {
-			while (true) {
-				JvnObject obj = (JvnObject) in.readObject();
-				objects.add(obj);
-			}
+			return in.readObject();
 		} catch (EOFException e) {
 			// End of file reached, we can ignore this exception
+			return null;
 		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
+			return null;
 		}
-
-		return objects;
 	}
 
 	// Method to erase the contents of the log file
-	public void eraseLogFile(String pathKey) {
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(logsPaths.get(pathKey)))) {
-			writer.write(""); // Writing an empty string to clear the file
-		} catch (IOException e) {
-			e.printStackTrace();
+	public void eraseLogFile(boolean deleteFiles) {
+		if (deleteFiles) {
+			this.logsPaths.forEach((k, v) -> {
+				if (v != null) {
+					File file = new File(v);
+					// Delete the file if it exists
+					if (file.exists()) {
+						if (file.delete()) {
+							System.out.println("File deleted: " + v);
+						}
+					} else {
+						System.out.println("File does not exist: " + v);
+					}
+				}
+			});
 		}
+//		else {
+//			try (BufferedWriter writer = new BufferedWriter(new FileWriter(logsPaths.get(pathKey)))) {
+//				writer.write(""); // Writing an empty string to clear the file
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//		}
 	}
 
 	// Optional: Method to get the file path (for testing or logging purposes)

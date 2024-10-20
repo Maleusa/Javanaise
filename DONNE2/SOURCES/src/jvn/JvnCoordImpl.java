@@ -7,8 +7,10 @@
 */
 
 package jvn;
+
 import java.io.Serial;
 import java.io.Serializable;
+import java.io.IOException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -33,9 +35,16 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			if (hasCrashed) {
 				System.out.println("Program terminated due to a crash.");
 			} else {
-				// TODO : erase logs files in that case
-				System.out.println("Program terminated normally.");
-				return;
+				// erase logs files in that case
+				try {
+					System.out.println("Program terminated normally.");
+					new JvnCoordLogger().eraseLogFile(true);
+					return;
+				} catch (IOException e) {
+					System.err.println("Erasing files undergone issues : " + e.getMessage());
+					e.printStackTrace();
+					return;
+				}
 			}
 		}));
 
@@ -58,22 +67,32 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws JvnException
 	 **/
 	private JvnCoordImpl() throws Exception {
-		// Init variables
-		this.jvnObjectId = 0;
-		this.jvnObjectList = new HashMap<Integer, JvnObject>();
-		this.jvnServerList = new ArrayList<JvnRemoteServer>();
-		this.jvnObjectIdList = new HashMap<String, Integer>();
-		this.readerList = new HashMap<Integer, ArrayList<JvnRemoteServer>>();
-		this.writerList = new HashMap<Integer, JvnRemoteServer>();
-
 		// Creation of a CoordLogger
 		this.log = new JvnCoordLogger();
-		System.out.println("CoordLogger Initialized");
-		System.out.println("ObjectList path : '" + this.log.getFilePath("ObjectList") + "'");
-		System.out.println("ServerList path : '" + this.log.getFilePath("ServerList") + "'");
-		System.out.println("ObjectIdList path : '" + this.log.getFilePath("ObjectIdList") + "'");
-		System.out.println("readerList path : '" + this.log.getFilePath("readerList") + "'");
-		System.out.println("writerList path : '" + this.log.getFilePath("writerList") + "'");
+//		System.out.println("CoordLogger Initialized");
+//		System.out.println("ObjectList path : '" + log.getFilePath("ObjectList") + "'");
+//		System.out.println("ServerList path : '" + log.getFilePath("ServerList") + "'");
+//		System.out.println("ObjectIdList path : '" + log.getFilePath("ObjectIdList") + "'");
+//		System.out.println("readerList path : '" + log.getFilePath("readerList") + "'");
+//		System.out.println("writerList path : '" + log.getFilePath("writerList") + "'");
+
+		// Init variables
+		this.jvnObjectList = (this.log.readObjects("ObjectList") != null)
+				? (HashMap<Integer, JvnObject>) this.log.readObjects("ObjectList")
+				: new HashMap<Integer, JvnObject>();
+		this.jvnServerList = (this.log.readObjects("ServerList") != null)
+				? (ArrayList<JvnRemoteServer>) this.log.readObjects("ServerList")
+				: new ArrayList<JvnRemoteServer>();
+		this.jvnObjectIdList = (this.log.readObjects("ObjectIdList") != null)
+				? (HashMap<String, Integer>) this.log.readObjects("ObjectIdList")
+				: new HashMap<String, Integer>();
+		this.readerList = (this.log.readObjects("readerList") != null)
+				? (HashMap<Integer, ArrayList<JvnRemoteServer>>) this.log.readObjects("readerList")
+				:new HashMap<Integer, ArrayList<JvnRemoteServer>>();
+		this.writerList = (this.log.readObjects("writerList") != null)
+				? (HashMap<Integer, JvnRemoteServer>) this.log.readObjects("writerList")
+				:new HashMap<Integer, JvnRemoteServer>();
+		this.jvnObjectId = (this.jvnObjectIdList.size() > 0) ? this.jvnObjectIdList.size() : 0;
 
 		// Create registry and bind coordinator
 		Registry registry = LocateRegistry.createRegistry(1099);
@@ -105,12 +124,17 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			return;
 		}
 		int joi = jo.jvnGetObjectId();
-		// TODO : save in logs
 		this.jvnObjectIdList.put(jon, joi);
 		this.jvnObjectList.put(joi, jo);
 
 		this.readerList.put(joi, new ArrayList<JvnRemoteServer>());
 		this.writerList.put(joi, null);
+
+		// save in logs
+		this.log.writeObject((Serializable) jvnObjectIdList, "ObjectIdList");
+		this.log.writeObject((Serializable) jvnObjectList, "ObjectList");
+		this.log.writeObject((Serializable) readerList, "readerList");
+		this.log.writeObject((Serializable) writerList, "writerList");
 	}
 
 	/**
@@ -120,8 +144,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException
 	 */
 	public void registerjvnServer(JvnRemoteServer js) throws java.rmi.RemoteException {
-		// TODO : save in logs
 		jvnServerList.add(js);
+		// save in logs
+		log.writeObject((Serializable) jvnServerList, "ServerList");
 		System.out.println("Registered a new JvnServer");
 	}
 
@@ -168,12 +193,15 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		if (writer != null && !writer.equals(js)) {
 			serializable = writer.jvnInvalidateWriterForReader(joi);
 			jo.setObject(serializable);
-			// TODO : save in logs
+			// save in logs
 			this.writerList.put(joi, null);
+			this.log.writeObject((Serializable) this.writerList, "writerList");
 			this.readerList.get(joi).add(writer);
 		}
 
 		this.readerList.get(joi).add(js);
+		// save in logs
+		this.log.writeObject((Serializable) this.readerList, "readerList");
 		return serializable;
 	}
 
@@ -211,7 +239,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		// Set the given js as writer
 		this.readerList.get(joi).clear();
 		this.writerList.put(joi, js);
-
+		// save in logs
+		this.log.writeObject((Serializable) this.readerList, "readerList");
+		this.log.writeObject((Serializable) this.writerList, "writerList");
 		return serializable;
 	}
 
