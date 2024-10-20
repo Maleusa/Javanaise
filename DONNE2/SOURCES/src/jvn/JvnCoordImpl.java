@@ -77,6 +77,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
         int joi = jo.jvnGetObjectId();
 
+        System.out.println("Register object (jvnRegisterObject) " + jon + " to " + joi);
         this.jvnObjectIdList.put(jon, joi);
         this.jvnObjectList.put(joi, jo);
 

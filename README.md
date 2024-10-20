@@ -30,6 +30,14 @@ Each script will launch 3 clients: one for reading, another for writing, and a t
 
 Note that on Windows OS, you can launch Javanaise 1 and 2 using the `.\windows_javanaiseV[1|2].bat` scripts.
 
+---
+
+You can test JVN1 with a server limited cache with:
+```
+./javanaiseV1_limitedcache.sh [NUMBER]
+```
+
+Or on Windows OS `./windows_javanaiseV1_limitedcache.sh [NUMBER]`
 
 
 ## Development

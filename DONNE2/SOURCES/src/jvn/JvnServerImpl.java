@@ -14,15 +14,18 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.io.*;
+import java.util.Map;
 
 
 public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer, JvnRemoteServer {
 
     @Serial
     private static final long serialVersionUID = 1L;
+    private static final int maxCacheSize = 5;
     private static JvnServerImpl js = null; // A JVN server is managed as a singleton
     private final JvnRemoteCoord jvnCoordinator;
     private final HashMap<Integer, JvnObject> cachedObjects;
+    private final HashMap<Integer, String> jvnObjectNameList;
 
     /**
      * Default constructor
@@ -30,6 +33,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
     private JvnServerImpl() throws Exception {
         super();
         this.cachedObjects = new HashMap<Integer, JvnObject>();
+        this.jvnObjectNameList = new HashMap<Integer, String>();
         Registry registry = LocateRegistry.getRegistry();
         this.jvnCoordinator = (JvnRemoteCoord) registry.lookup("coord_service");
         this.jvnCoordinator.registerjvnServer(this);
@@ -69,7 +73,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
     public JvnObject jvnCreateObject(Serializable o) throws jvn.JvnException, RemoteException {
         int id = this.jvnCoordinator.jvnGetObjectId();
         JvnObject jvnObject = new JvnObjectImpl(o, this, id);
-        this.cachedObjects.put(id, jvnObject);
+        this.addObjectToCache(id, jvnObject);
         return jvnObject;
     }
 
@@ -82,6 +86,8 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
     public void jvnRegisterObject(String jon, JvnObject jo) throws jvn.JvnException {
         try {
             this.jvnCoordinator.jvnRegisterObject(jon, jo, js);
+            System.out.println("jvnRegisterObject -> jvnObjectNameList, joi: " + jo.jvnGetObjectId() + " for jon: " + jon);
+            this.jvnObjectNameList.put(jo.jvnGetObjectId(), jon); // Keep joi<->jon relation for JO server cache
         } catch (RemoteException | JvnException e) {
             System.out.println("Could not register object " + jon);
             e.printStackTrace();
@@ -105,7 +111,9 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 
         if (object != null) {
             object.setLocalServer(this);
-            this.cachedObjects.put(object.jvnGetObjectId(), object);
+            System.out.println("Put in jvnObjectNameList, joi: " + object.jvnGetObjectId() + " for jon: " + jon);
+            this.jvnObjectNameList.put(object.jvnGetObjectId(), jon); // Keep joi<->jon relation for JO server cache
+            this.addObjectToCache(object.jvnGetObjectId(), object);
         }
 
         return object;
@@ -118,7 +126,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
      * @return the current JVN object state
      **/
     public synchronized Serializable jvnLockRead(int joi) throws JvnException {
-        Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
+        Serializable obj = this.getCachedObject(joi).jvnGetSharedObject();
 
         try {
             obj = this.jvnCoordinator.jvnLockRead(joi, this);
@@ -136,7 +144,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
      * @return the current JVN object state
      **/
     public synchronized Serializable jvnLockWrite(int joi) throws JvnException {
-        Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
+        Serializable obj = this.getCachedObject(joi).jvnGetSharedObject();
 
         try {
             obj = this.jvnCoordinator.jvnLockWrite(joi, this);
@@ -154,7 +162,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
      * @param joi : the JVN object id
      **/
     public synchronized void jvnInvalidateReader(int joi) throws java.rmi.RemoteException, jvn.JvnException {
-        this.cachedObjects.get(joi).jvnInvalidateReader();
+        this.getCachedObject(joi).jvnInvalidateReader();
     }
 
     /**
@@ -164,7 +172,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
      * @return the current JVN object state
      **/
     public synchronized Serializable jvnInvalidateWriter(int joi) throws java.rmi.RemoteException, jvn.JvnException {
-        return this.cachedObjects.get(joi).jvnInvalidateWriter();
+        return this.getCachedObject(joi).jvnInvalidateWriter();
     }
 
     /**
@@ -174,7 +182,73 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
      * @return the current JVN object state
      **/
     public synchronized Serializable jvnInvalidateWriterForReader(int joi) throws java.rmi.RemoteException, jvn.JvnException {
-        return this.cachedObjects.get(joi).jvnInvalidateWriterForReader();
+        return this.getCachedObject(joi).jvnInvalidateWriterForReader();
+    }
+
+    /**
+     * Add to cache
+     *
+     * @param joi : the JVN object identification
+     * @param obj : the JVN shared object
+     */
+    public void addObjectToCache(int joi, JvnObject obj) throws JvnException {
+        if (this.cachedObjects.size() >= maxCacheSize) {
+            this.flushEldestCachedObject();
+        }
+        this.cachedObjects.put(joi, obj);
+    }
+
+    /**
+     * Get cached object or retrieve it from Coordinator
+     *
+     * @param joi : the JVN object identification
+     * @return JvnObject|null
+     * @throws JvnException
+     */
+    public JvnObject getCachedObject(int joi) throws JvnException {
+        JvnObject obj = this.cachedObjects.get(joi);
+
+        if (obj == null) {
+            System.out.println("Object with ID " + joi + " was flushed. Trying to recover it from coordinator.");
+            try {
+                // Get JON from local object name list by a JOI
+                String jon = jvnObjectNameList.get(joi);
+                if (jon == null) {
+                    throw new JvnException("Cannot find JON in jvnObjectNameList for object " + joi);
+                }
+
+                // Get from coordinator to put it back in cache
+                obj = jvnLookupObject(jon);
+                if (obj == null) {
+                    throw new JvnException("Cannot find in coordinator flushed object " + joi + " / jon = " + jon);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new JvnException("Cannot retrieve flushed object " + joi);
+            }
+        }
+
+        return obj;
+    }
+
+    /**
+     * Flush eldest cached object
+     *
+     * @throws JvnException
+     */
+    private void flushEldestCachedObject() throws JvnException {
+        Map.Entry<Integer, JvnObject> eldest = this.cachedObjects.entrySet().iterator().next();
+        if (eldest != null) {
+            JvnObject objectToFlush = eldest.getValue();
+            try {
+                objectToFlush.jvnUnLock();
+            } catch (JvnException e) {
+                System.out.println("Cannot flush cached object: " + eldest.getKey());
+                e.printStackTrace();
+            }
+            this.cachedObjects.remove(eldest.getKey());
+            System.out.println("Flushed object with ID: " + eldest.getKey());
+        }
     }
 
 }
