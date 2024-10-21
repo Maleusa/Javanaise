@@ -31,7 +31,6 @@ public class JvnCoordLogger {
 				this.logsPaths.put("writerList", childDir + "/" + "Coord_write.txt");
 				createFileIfNotExists();
 			} else {
-				// System.out.println("Parent folder not found.");
 				throw new IOException("Parent folder not found.");
 			}
 		} catch (IOException e) {
@@ -70,7 +69,9 @@ public class JvnCoordLogger {
 		return childDir;
 	}
 
-	// Method to create the log file if it doesn't exist
+	/**
+	 * Method to create the log file if it doesn't exist
+	 */
 	private void createFileIfNotExists() {
 		this.logsPaths.forEach((k, v) -> {
 			try {
@@ -84,15 +85,12 @@ public class JvnCoordLogger {
 		});
 	}
 
-	// Method to write a serializable object to the log file
+	/**
+	 * Method to write a serializable object to the log file
+	 */
 	public void writeObject(Serializable obj, String pathKey) {
-		try (FileOutputStream fileOut = new FileOutputStream(logsPaths.get(pathKey), true);
-				ObjectOutputStream out = new ObjectOutputStream(fileOut) {
-					@Override
-					protected void writeStreamHeader() throws IOException {
-						reset(); // Avoid writing a new header when appending
-					}
-				}) {
+		try (FileOutputStream fileOut = new FileOutputStream(this.logsPaths.get(pathKey), true);
+				ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
 			out.writeObject(obj);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -102,12 +100,16 @@ public class JvnCoordLogger {
 	// Method to read all serialized objects from the log file
 	public Object readObjects(String pathKey) {
 
-		try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(logsPaths.get(pathKey)))) {
-			return in.readObject();
+		try (FileInputStream fileIn = new FileInputStream(this.logsPaths.get(pathKey));
+				ObjectInputStream in = new ObjectInputStream(fileIn)) {
+			Object obj = in.readObject();
+			return obj;
 		} catch (EOFException e) {
-			// End of file reached, we can ignore this exception
+			// do nothing if the files are readed empty 
+			// case occuring especially at start after normally stopped
 			return null;
-		} catch (IOException | ClassNotFoundException e) {
+		} 
+		catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
 			return null;
 		}

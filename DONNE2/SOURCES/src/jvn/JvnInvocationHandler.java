@@ -44,7 +44,6 @@ JvnServerImpl server = JvnServerImpl.jvnGetServer();
 		if (method.isAnnotationPresent(Operation.class)) {
 			switch (method.getAnnotation(Operation.class).name()) {
 				case "read":
-					System.out.println("COUCOU");
 					object.jvnLockRead();
 					break;
 				case "write":

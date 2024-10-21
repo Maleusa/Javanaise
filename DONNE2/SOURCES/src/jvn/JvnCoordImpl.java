@@ -69,7 +69,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	private JvnCoordImpl() throws Exception {
 		// Creation of a CoordLogger
 		this.log = new JvnCoordLogger();
-//		System.out.println("CoordLogger Initialized");
+		System.out.println("CoordLogger Initialized");
 //		System.out.println("ObjectList path : '" + log.getFilePath("ObjectList") + "'");
 //		System.out.println("ServerList path : '" + log.getFilePath("ServerList") + "'");
 //		System.out.println("ObjectIdList path : '" + log.getFilePath("ObjectIdList") + "'");
@@ -77,22 +77,22 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 //		System.out.println("writerList path : '" + log.getFilePath("writerList") + "'");
 
 		// Init variables
-		this.jvnObjectList = (this.log.readObjects("ObjectList") != null)
+		this.jvnObjectList = ((this.log.readObjects("ObjectList") instanceof HashMap<?, ?>)
 				? (HashMap<Integer, JvnObject>) this.log.readObjects("ObjectList")
-				: new HashMap<Integer, JvnObject>();
-		this.jvnServerList = (this.log.readObjects("ServerList") != null)
+				: new HashMap<Integer, JvnObject>());
+		this.jvnServerList = ((this.log.readObjects("ServerList") instanceof ArrayList<?>)
 				? (ArrayList<JvnRemoteServer>) this.log.readObjects("ServerList")
-				: new ArrayList<JvnRemoteServer>();
-		this.jvnObjectIdList = (this.log.readObjects("ObjectIdList") != null)
+				: new ArrayList<JvnRemoteServer>());
+		this.jvnObjectIdList = ((this.log.readObjects("ObjectIdList") instanceof HashMap<?, ?>)
 				? (HashMap<String, Integer>) this.log.readObjects("ObjectIdList")
-				: new HashMap<String, Integer>();
-		this.readerList = (this.log.readObjects("readerList") != null)
+				: new HashMap<String, Integer>());
+		this.readerList = ((this.log.readObjects("readerList") instanceof HashMap<?, ?>)
 				? (HashMap<Integer, ArrayList<JvnRemoteServer>>) this.log.readObjects("readerList")
-				:new HashMap<Integer, ArrayList<JvnRemoteServer>>();
-		this.writerList = (this.log.readObjects("writerList") != null)
+				: new HashMap<Integer, ArrayList<JvnRemoteServer>>());
+		this.writerList = ((this.log.readObjects("writerList") instanceof HashMap<?, ?>)
 				? (HashMap<Integer, JvnRemoteServer>) this.log.readObjects("writerList")
-				:new HashMap<Integer, JvnRemoteServer>();
-		this.jvnObjectId = (this.jvnObjectIdList.size() > 0) ? this.jvnObjectIdList.size() : 0;
+				: new HashMap<Integer, JvnRemoteServer>());
+		this.jvnObjectId = ((this.jvnObjectIdList.size() > 0) ? this.jvnObjectIdList.size() : 0);
 
 		// Create registry and bind coordinator
 		Registry registry = LocateRegistry.createRegistry(1099);
