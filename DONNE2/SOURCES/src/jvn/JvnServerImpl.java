@@ -9,6 +9,7 @@
 package jvn;
 
 import java.rmi.RemoteException;
+import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -21,7 +22,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
     @Serial
     private static final long serialVersionUID = 1L;
     private static JvnServerImpl js = null; // A JVN server is managed as a singleton
-    private final JvnRemoteCoord jvnCoordinator;
+    private JvnRemoteCoord jvnCoordinator;
     private final HashMap<Integer, JvnObject> cachedObjects;
 
     /**
@@ -34,6 +35,31 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
         this.jvnCoordinator = (JvnRemoteCoord) registry.lookup("coord_service");
         this.jvnCoordinator.registerjvnServer(this);
         js = this;
+    }
+    
+    /**
+     * method to retry a connection to RMI registry until it works
+     **/
+    public void retryConnection() {
+    	boolean isConnected = false;
+        while (!isConnected) {
+            try {
+        		//Naming.rebind(getClientHost(), null);
+            	Registry registry = LocateRegistry.getRegistry();
+                this.jvnCoordinator = (JvnRemoteCoord) registry.lookup("coord_service");
+                this.jvnCoordinator.registerjvnServer(this);
+                isConnected = true;  // Set flag to stop retrying after successful connection
+                System.out.println("Connected to RMI registry and service successfully.");
+                
+            } catch (RemoteException | NotBoundException e) {
+                System.out.println("RMI registry or service not available. Retrying...");
+                try {
+                    Thread.sleep(3000);  // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
     }
 
     /**
@@ -84,6 +110,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
             this.jvnCoordinator.jvnRegisterObject(jon, jo, js);
         } catch (RemoteException | JvnException e) {
             System.out.println("Could not register object " + jon);
+            retryConnection();
             e.printStackTrace();
         }
     }
@@ -100,6 +127,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
         try {
             object = (JvnObjectImpl) this.jvnCoordinator.jvnLookupObject(jon, this);
         } catch (RemoteException | JvnException e) {
+        	retryConnection();
             return null;
         }
 
@@ -123,6 +151,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
         try {
             obj = this.jvnCoordinator.jvnLockRead(joi, this);
         } catch (RemoteException | JvnException e) {
+        	retryConnection();
             e.printStackTrace();
         }
 
@@ -141,6 +170,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
         try {
             obj = this.jvnCoordinator.jvnLockWrite(joi, this);
         } catch (RemoteException | JvnException e) {
+        	retryConnection();
             e.printStackTrace();
         }
 
