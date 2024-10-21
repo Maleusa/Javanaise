@@ -48,7 +48,15 @@ public class JvnObjectDistr implements JvnObject {
 	public synchronized void jvnLockRead() throws jvn.JvnException {
 		switch(this.lockState) {
 		case NOLOCK:
-			this.object=this.localDistr.jvnLockRead(id);
+			try {
+				this.object=this.localDistr.jvnLockRead(id);
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (JvnException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			this.lockState=LockStateEnum.READLOCK;
 			break;
 		case WRITELOCK:
@@ -69,6 +77,7 @@ public class JvnObjectDistr implements JvnObject {
 	 * @throws JvnException
 	 **/
 	public synchronized void jvnLockWrite() throws jvn.JvnException {
+		System.out.println(this.id);
 		switch(this.lockState) {
 		case WRITELOCKCACHED:
 			this.lockState=LockStateEnum.WRITELOCK;
@@ -76,7 +85,15 @@ public class JvnObjectDistr implements JvnObject {
 		case WRITELOCK:
 			break;
 		default:
-			this.object=this.localDistr.jvnLockWrite(this.id);
+			try {
+				this.object=this.localDistr.jvnLockWrite(this.id);
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (JvnException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			this.lockState=LockStateEnum.WRITELOCK;
 		}
 	}

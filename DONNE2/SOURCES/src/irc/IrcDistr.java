@@ -30,11 +30,12 @@ public class IrcDistr {
         	int arg =Integer.parseInt(argv[0]);
         	
             JvnNode server = JvnNode.jvnGetServer(arg);
-
+            JvnObject object=null;
             // look up the IRC object in the JVN server
             // if not found, create it, and register it in the JVN server
-            JvnObject object = server.jvnLookupObject("IRC", server.getJvnClient());
-
+            if(arg!=0) {
+             object = server.jvnLookupObject("IRC", server.getJvnClient());
+            }
             if (object == null) {
                 object = server.getJvnClient().jvnCreateObject((Serializable) new Sentence());
                 // after creation, I have a write lock on the object

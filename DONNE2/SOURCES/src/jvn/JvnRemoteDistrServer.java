@@ -46,17 +46,17 @@ public interface JvnRemoteDistrServer extends Remote {
    public Serializable jvnInvalidateWriterForReader(String joi)
 	 throws java.rmi.RemoteException,jvn.JvnException;
 
-	Serializable jvnLockWrite(String joi) throws JvnException;
+	Serializable jvnLockWrite(String joi) throws JvnException, RemoteException;
 
-	Serializable jvnLockRead(String joi) throws JvnException;
+	Serializable jvnLockRead(String joi) throws JvnException,RemoteException;
 
 	JvnObject jvnCreateObject(Serializable jos) throws JvnException, RemoteException;
 
-	void jvnRegisterObject(String jon, JvnObject jo) throws JvnException;
+	void jvnRegisterObject(String jon, JvnObject jo) throws JvnException, RemoteException;
 
-	JvnObject jvnLookupObject(String jon) throws JvnException;
+	JvnObject jvnLookupObject(String jon) throws JvnException,RemoteException;
 
-	void jvnTerminate() throws JvnException;
+	void jvnTerminate() throws JvnException,RemoteException;
 
 }
 

@@ -21,14 +21,14 @@ public class JvnNode extends UnicastRemoteObject implements JvnRemoteDistrCoord,
     private JvnServerDistrImpl JvnClient;
     private final HashMap<String, String> jvnObjectIdList;
     private ArrayList<JvnNode> jvnServerList;
-    private final HashMap<Integer, JvnObject> jvnObjectList;
+    private final HashMap<String, JvnObject> jvnObjectList;
     private final HashMap<Integer, ArrayList<JvnRemoteDistrServer>> readerList;
     private final HashMap<Integer, JvnRemoteDistrServer> writerList;
 	private JvnNode jvnPresident;
     
     public JvnNode(int arg) throws Exception {
     	this.jvnObjectIdInternal = 0;
-        this.jvnObjectList = new HashMap<Integer, JvnObject>();
+        this.jvnObjectList = new HashMap<String, JvnObject>();
         this.jvnServerList = new ArrayList<JvnNode>();
         this.jvnObjectIdList = new HashMap<String, String>();
         this.readerList = new HashMap<Integer, ArrayList<JvnRemoteDistrServer>>();
@@ -40,96 +40,100 @@ public class JvnNode extends UnicastRemoteObject implements JvnRemoteDistrCoord,
             registry.bind("coord_service", this);
             this.id=0;
             this.jvnServerList.add(this);
+            this.jc=this;
 
         }
         else {
-        	Registry registry=LocateRegistry.getRegistry();
+        	Registry registry=LocateRegistry.getRegistry(1099);
         	this.jvnPresident = (JvnNode) registry.lookup("coord_service");
-        	this.jc=this;
+        	this.jc=jvnPresident;
         	jvnPresident.registerjvnServer(this);
         }
-        this.setJvnClient(new JvnServerDistrImpl(this));
-        js = this.getJvnClient();
+        this.JvnClient=new JvnServerDistrImpl(this) ;
+        js =this.JvnClient;
         jn=this;
     }
 
 	@Override
 	public String jvnGetObjectId() throws RemoteException, JvnException {
 		this.jvnObjectIdInternal+=1;
-				return (this.id +";"+this.jvnObjectIdInternal);
+		String id =this.id +";"+this.jvnObjectIdInternal;
+		System.out.println(id);
+				return id;
 	}
 	@Override
 	public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteDistrServer js) throws RemoteException, JvnException {
 		 
-		        if (!this.jvnServerList.contains(js)) {
-		            System.out.println("Skip: JS not found to register the object " + jon);
-					return;
-		        }
-		        int joi = jo.jvnGetObjectId();
+//		        if (!this.jvnServerList.contains(js)) {
+//		            System.out.println("Skip: JS not found to register the object " + jon);
+//					return;
+//		        }
+		        //String id =this.jvnGetObjectId();
 
-		        this.jvnObjectIdList.put(jon, this.id+";"+joi);
-		        this.jvnObjectList.put(joi, jo);
-
-		        this.readerList.put(joi, new ArrayList<JvnRemoteDistrServer>());
-		        this.writerList.put(joi, null);
+		        this.jvnObjectIdList.put(jon, jo.jvnGetObjectIdS());
+		        this.jvnObjectList.put(jo.jvnGetObjectIdS(), jo);
+		        String[] words = jo.jvnGetObjectIdS().split(separator);
+		        this.readerList.put(Integer.valueOf(words[1]), new ArrayList<JvnRemoteDistrServer>());
+		        this.writerList.put(Integer.valueOf(words[1]), null);
 		    }
 		
 	
 	@Override
 	public JvnObject jvnLookupObject(String jon, JvnRemoteDistrServer js) throws RemoteException, JvnException {
-        if (!this.jvnServerList.contains(js)) {
-            throw new JvnException("Server not found");
-        }
+//        if (!this.jvnServerList.contains(js)) {
+//            throw new JvnException("Server not found");
+//        }
 
-		if (!this.jvnObjectIdList.containsKey(jon)) {
-			throw new JvnException("Remote object not found");
-		}
+//		if (!this.jvnObjectIdList.containsKey(jon)) {
+//			throw new JvnException("Remote object not found");
+//		}
 
         String id = this.jvnObjectIdList.get(jon);
         String[] words = id.split(separator);
-        if(Integer.getInteger(words[0])==this.id) {
-        	return this.jvnObjectList.get(Integer.getInteger(words[1]));
+        if(Integer.valueOf(words[0])==this.id) {
+        	return this.jvnObjectList.get(Integer.valueOf(words[1]));
         }else
-        return this.jvnServerList.get(Integer.getInteger(words[0])).jvnLookupObject(jon, js);
+        return this.jvnServerList.get(Integer.valueOf(words[0])).jvnLookupObject(jon, js);
 	}
 	@Override
 	public Serializable jvnLockRead(String joi, JvnRemoteDistrServer js) throws RemoteException, JvnException {
 		String[] words = joi.split(separator);
 		if(Integer.getInteger(words[0])!=this.id) {
-			return this.jvnServerList.get(Integer.getInteger(words[0])).jvnLockRead(joi, js);
+			return this.jvnServerList.get(Integer.valueOf(words[0])).jvnLockRead(joi, js);
 		}
-		JvnObject jo = this.jvnObjectList.get(Integer.getInteger(words[1]));
+		JvnObject jo = this.jvnObjectList.get(joi);
         if (jo == null) {
             throw new JvnException("Remote object not found");
         }
         Serializable serializable = jo.jvnGetSharedObject();
-        JvnRemoteDistrServer writer = this.writerList.get(Integer.getInteger(words[1]));
+        JvnRemoteDistrServer writer = this.writerList.get(Integer.valueOf(words[1]));
 
         // If object is write locked by another server, invalidate its write lock
         // and add it to the list of readers
         if (writer != null && !writer.equals(js)) {
             serializable = writer.jvnInvalidateWriterForReader(joi);
             jo.setObject(serializable);
-            this.writerList.put(Integer.getInteger(words[1]), null);
-            this.readerList.get(Integer.getInteger(words[1])).add(writer);
+            this.writerList.put(Integer.valueOf(words[1]), null);
+            this.readerList.get(Integer.valueOf(words[1])).add(writer);
         }
 
-        this.readerList.get(Integer.getInteger(words[1])).add(js);
+        this.readerList.get(Integer.valueOf(words[1])).add(js);
         return serializable;
 	}
 	@Override
 	public Serializable jvnLockWrite(String joi, JvnRemoteDistrServer js) throws RemoteException, JvnException {
+		System.out.println(joi);
 		String[] words = joi.split(separator);
-		if(Integer.getInteger(words[0])!=this.id) {
-			return this.jvnServerList.get(Integer.getInteger(words[0])).jvnLockWrite(joi, js);
+		if(Integer.valueOf(words[0])!=this.id) {
+			return this.jvnServerList.get(Integer.valueOf(words[0])).jvnLockWrite(joi, js);
 		}
-		JvnObject jo = this.jvnObjectList.get(Integer.getInteger(words[1]));
+		JvnObject jo = this.jvnObjectList.get(joi);
         if (jo == null) {
             throw new JvnException("Remote object not found");
         }
 
         Serializable serializable = jo.jvnGetSharedObject();
-        JvnRemoteDistrServer writer = this.writerList.get(Integer.getInteger(words[1]));
+        JvnRemoteDistrServer writer = this.writerList.get(Integer.valueOf(words[1]));
 
         // Invalidate lock for the server having a write lock
         if (writer != null && !writer.equals(js)) {
@@ -138,15 +142,15 @@ public class JvnNode extends UnicastRemoteObject implements JvnRemoteDistrCoord,
         }
 
         // Invalidate lock for the servers having a read lock
-        for (JvnRemoteDistrServer reader: this.readerList.get(joi)) {
+        for (JvnRemoteDistrServer reader: this.readerList.get(Integer.valueOf(words[1]))) {
             if (!reader.equals(js)) {
 				reader.jvnInvalidateReader(joi);
 			}
         }
 
         // Set the given js as writer
-        this.readerList.get(Integer.getInteger(words[1])).clear();
-        this.writerList.put(Integer.getInteger(words[1]), js);
+        this.readerList.get(Integer.valueOf(words[1])).clear();
+        this.writerList.put(Integer.valueOf(words[1]), js);
 
         return serializable;
 	}

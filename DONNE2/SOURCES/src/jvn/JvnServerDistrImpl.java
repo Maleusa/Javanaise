@@ -42,7 +42,7 @@ public class JvnServerDistrImpl extends UnicastRemoteObject implements JvnRemote
 	}
 
 	@Override
-	public void jvnRegisterObject(String jon, JvnObject jo) throws JvnException {
+	public void jvnRegisterObject(String jon, JvnObject jo) throws JvnException,RemoteException {
 		try {
             this.jvnCoordinator.jvnRegisterObject(jon, jo, js);
         } catch (RemoteException | JvnException e) {
@@ -53,7 +53,7 @@ public class JvnServerDistrImpl extends UnicastRemoteObject implements JvnRemote
 	}
 
 	@Override
-	public JvnObject jvnLookupObject(String jon) throws JvnException {
+	public JvnObject jvnLookupObject(String jon) throws JvnException,RemoteException {
 		JvnObjectImpl object;
 
         try {
@@ -64,14 +64,15 @@ public class JvnServerDistrImpl extends UnicastRemoteObject implements JvnRemote
 
         if (object != null) {
             object.setLocalDistr(this);
-            this.cachedObjects.put(this.jvnCoordinator.getServerId()+";"+object.jvnGetObjectId(), object);
+            this.cachedObjects.put(object.jvnGetObjectIdS(), object);
         }
 
         return object;
 	}
 
 	@Override
-	public Serializable jvnLockRead(String joi) throws JvnException {
+	public Serializable jvnLockRead(String joi) throws JvnException,RemoteException {
+		
 		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
 
         try {
@@ -84,9 +85,10 @@ public class JvnServerDistrImpl extends UnicastRemoteObject implements JvnRemote
 	}
 
 	@Override
-	public Serializable jvnLockWrite(String joi) throws JvnException {
+	public Serializable jvnLockWrite(String joi) throws JvnException,RemoteException {
+		
 		Serializable obj = this.cachedObjects.get(joi).jvnGetSharedObject();
-
+		
         try {
             obj = this.jvnCoordinator.jvnLockWrite(joi, this);
         } catch (RemoteException | JvnException e) {
@@ -97,7 +99,7 @@ public class JvnServerDistrImpl extends UnicastRemoteObject implements JvnRemote
 	}
 
 	@Override
-	public void jvnTerminate() throws JvnException {
+	public void jvnTerminate() throws JvnException,RemoteException {
 		// TODO Auto-generated method stub
 		
 	}
